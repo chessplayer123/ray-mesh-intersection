@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "utils/triangle.hpp"
+#include <cstddef>
 
 class TriangularMesh {
 public:
