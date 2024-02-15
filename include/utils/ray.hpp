@@ -1,13 +1,13 @@
 #ifndef RAY_HPP_
 #define RAY_HPP_
 
-#include "vector.hpp"
+#include "utils/vector.hpp"
 
 class Ray {
 public:
-    Ray(Point origin, Vector dir): origin(origin), direction(dir) {}
+    Ray(Vector origin, Vector dir): origin(origin), direction(dir) {}
 private:
-    Point origin;
+    Vector origin;
     Vector direction;
 };
 

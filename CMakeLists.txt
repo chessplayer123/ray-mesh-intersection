@@ -10,7 +10,7 @@ include_directories(include/)
 file(GLOB SOURCES
     src/utils/*.cpp
     src/meshes/*.cpp
-    src/octree/*.cpp
+    src/k_d_tree/*.cpp
     src/*.cpp
 )
 add_library(Library OBJECT ${SOURCES})
