@@ -1,5 +1,4 @@
-#ifndef RAY_HPP_
-#define RAY_HPP_
+#pragma once
 
 class Triangle;
 
@@ -20,5 +19,3 @@ private:
     Vector origin;
     Vector vector;
 };
-
-#endif // RAY_HPP_

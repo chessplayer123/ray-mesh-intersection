@@ -1,5 +1,4 @@
-#ifndef TRIANGULAR_MESH_HPP_
-#define TRIANGULAR_MESH_HPP_
+#pragma once
 
 #include <vector>
 #include "utils/triangle.hpp"
@@ -23,5 +22,3 @@ public:
 private:
     std::vector<Triangle> triangles;
 };
-
-#endif // TRIANGULAR_MESH_HPP_

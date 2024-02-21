@@ -6,7 +6,7 @@
 - [src](src/): source files
 - [apps](apps/): main application
 - [test](test/): unit test files
-- [external](extern/): dependencies
+- [external](external/): dependencies
 - [data](data/): models
 
 

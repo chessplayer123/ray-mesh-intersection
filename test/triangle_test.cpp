@@ -2,9 +2,6 @@
 #include "utils/triangle.hpp"
 
 
-TEST_CASE("Barycentric coordinates") {
-}
-
 TEST_CASE("Contains point method") {
     GIVEN("Triangle") {
         Vector p1(0.3, -15, 9.7), p2(2.3, 0.01, -1), p3(1, 2, 8);

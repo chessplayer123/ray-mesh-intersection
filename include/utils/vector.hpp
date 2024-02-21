@@ -1,12 +1,11 @@
-#ifndef VECTOR_HPP_
-#define VECTOR_HPP_
+#pragma once
 
 #include <iostream>
 
 
 class Vector {
-public:
     friend std::ostream& operator<<(std::ostream& stream, const Vector& vec);
+public:
 
     Vector(): x(0), y(0), z(0) {}
     Vector(double x, double y, double z): x(x), y(y), z(z) {}
@@ -31,7 +30,4 @@ private:
     double x;
     double y;
     double z;
-
 };
-
-#endif // VECTOR_HPP_

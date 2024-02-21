@@ -1,5 +1,4 @@
-#ifndef TRIANGLE_HPP_
-#define TRIANGLE_HPP_
+#pragma once
 
 #include <array>
 #include "utils/vector.hpp"
@@ -26,5 +25,3 @@ public:
 private:
     std::array<Vector, 3> vertexes;
 };
-
-#endif // TRIANGLE_HPP_

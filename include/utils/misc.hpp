@@ -1,5 +1,4 @@
-#ifndef MISC_HPP_
-#define MISC_HPP_
+#pragma once
 
 inline double cast_range(double left, double value, double right) {
     if (value < left) return left;
@@ -14,5 +13,3 @@ inline bool inside_inclusive_range(double left, double value, double right) {
 inline bool inside_exclusive_range(double left, double value, double right) {
     return left < value && value < right;
 }
-
-#endif // MISC_HPP_

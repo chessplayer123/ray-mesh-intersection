@@ -7,12 +7,13 @@ else()
     set(CMAKE_CXX_FLAGS "/std:c++17")
 endif()
 
-# Library for 
+# Library for main application
 include_directories(include/)
 file(GLOB SOURCES
     src/utils/*.cpp
     src/meshes/*.cpp
     src/k_d_tree/*.cpp
+    src/readers/*.cpp
     src/*.cpp
 )
 add_library(Library OBJECT ${SOURCES})
