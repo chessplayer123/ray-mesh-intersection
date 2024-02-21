@@ -3,6 +3,8 @@ project(ray-mesh-intersection)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic -O2 -std=c++17")
+else()
+    set(CMAKE_CXX_FLAGS "/std:c++17")
 endif()
 
 # Library for 
@@ -10,7 +12,7 @@ include_directories(include/)
 file(GLOB SOURCES
     src/utils/*.cpp
     src/meshes/*.cpp
-    src/octree/*.cpp
+    src/k_d_tree/*.cpp
     src/*.cpp
 )
 add_library(Library OBJECT ${SOURCES})
