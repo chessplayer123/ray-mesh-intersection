@@ -3,6 +3,8 @@ project(ray-mesh-intersection)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic -O2 -std=c++17")
+else()
+    set(CMAKE_CXX_FLAGS "/std:c++17")
 endif()
 
 # Library for 
