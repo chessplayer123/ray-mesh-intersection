@@ -8,9 +8,9 @@ class TriangularMesh {
 public:
     TriangularMesh(): triangles() {}
 
-    TriangularMesh(std::vector<Triangle> data): triangles(data) {}
+    TriangularMesh(std::vector<Triangle>& data): triangles(data) {}
 
-    TriangularMesh(std::vector<Triangle>&& data): triangles(data) {}
+    TriangularMesh(std::vector<Triangle>&& data): triangles(std::move(data)) {}
 
     inline size_t size() const {
         return triangles.size();

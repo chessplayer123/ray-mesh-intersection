@@ -2,13 +2,6 @@
 #include "utils/misc.hpp"
 
 
-Vector Triangle::get_normal() const {
-    Vector vec1 = v2() - v1();
-    Vector vec2 = v3() - v1();
-
-    return vec1.cross(vec2);
-}
-
 Vector Triangle::get_barycentric_coords(const Vector& point) const {
     Vector vec0 = v2() - v1(), vec1 = v3() - v1(), vec2 = point - v1();
     double d00 = vec0.dot(vec0), d01 = vec0.dot(vec1),

@@ -5,23 +5,36 @@
 
 class Triangle {
 public:
-    Triangle(Vector p1, Vector p2, Vector p3): vertexes({p1, p2, p3}) {}
+    Triangle(Vector p1, Vector p2, Vector p3):
+        vertex1(p1), vertex2(p2), vertex3(p3)
+    {
+        Vector vec1 = v2() - v1();
+        Vector vec2 = v3() - v1();
+        normal = vec1.cross(vec2);
+    }
 
-    Vector get_normal() const;
+    Triangle(Vector p1, Vector p2, Vector p3, Vector normal):
+        vertex1(p1), vertex2(p2), vertex3(p3), normal(normal) {}
+
     bool contains(const Vector& point) const;
     Vector get_barycentric_coords(const Vector& point) const;
 
+    constexpr const Vector& get_normal() const {
+        return normal;
+    }
+
     constexpr const Vector& v1() const {
-        return vertexes[0];
+        return vertex1;
     }
 
     constexpr const Vector& v2() const {
-        return vertexes[1];
+        return vertex2;
     }
 
     constexpr const Vector& v3() const {
-        return vertexes[2];
+        return vertex3;
     }
 private:
-    std::array<Vector, 3> vertexes;
+    Vector vertex1, vertex2, vertex3;
+    Vector normal;
 };

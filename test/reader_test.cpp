@@ -1,6 +1,6 @@
 #include <catch2/catch.hpp>
-#include "readers/reader.hpp"
+#include "mesh_readers/reader.hpp"
 
 TEST_CASE("Ply reader function test") {
-    auto mesh = read_triangular_mesh<Ply>("");
+    TriangularMesh mesh = MeshReader::read_triangular_mesh<MeshReader::Ply>("../../data/bunny.ply");
 }
