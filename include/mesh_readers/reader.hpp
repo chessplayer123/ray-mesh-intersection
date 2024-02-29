@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <memory>
 #include "meshes/triangular_mesh.hpp"
 
 class MeshReader {
@@ -34,6 +35,10 @@ public:
         read<std::string>();
     }
 
+    inline void skip_bytes(std::streamsize size) {
+        read_as_bytes(size);
+    }
+
     inline void expect_word(const std::string& expected_word) {
         std::string actual_word = read<std::string>();
         if (actual_word != expected_word) {
@@ -42,10 +47,26 @@ public:
     }
 
     template <typename T>
+    inline T read_as_bytes() {
+        auto buffer = std::shared_ptr<char[]>(new char[sizeof(T)]);
+        stream.read(buffer.get(), sizeof(T));
+        auto value = std::shared_ptr<T>(buffer, reinterpret_cast<T*>(buffer.get()));
+        return *value;
+    }
+
+    inline std::string read_as_bytes(std::streamsize size) {
+        auto buffer = std::shared_ptr<char[]>(new char[size+1]);
+        buffer.get()[size] = '\0';
+
+        stream.read(buffer.get(), size);
+        return std::string(buffer.get());
+    }
+
+    template <typename T>
     inline T read() {
-        T str;
-        stream >> str >> std::ws;
-        return str;
+        T data;
+        stream >> data>> std::ws;
+        return data;
     }
 private:
     std::istream& stream;
