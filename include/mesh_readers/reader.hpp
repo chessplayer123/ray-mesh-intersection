@@ -9,12 +9,13 @@ public:
     enum DataFormat {
         Ply,
         Stl,
-        Obj,
-        Auto,
+        Obj
     };
 
     template<DataFormat>
-    static TriangularMesh read_triangular_mesh(const std::string& path);
+    static TriangularMesh read_triangular_mesh(std::istream& stream);
+
+    static DataFormat define_format(const std::string& path);
 
     MeshReader(std::istream& stream): stream(stream) {}
 
@@ -65,7 +66,7 @@ public:
     template <typename T>
     inline T read() {
         T data;
-        stream >> data>> std::ws;
+        stream >> data >> std::ws;
         return data;
     }
 private:

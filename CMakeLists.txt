@@ -12,7 +12,7 @@ include_directories(include/)
 file(GLOB SOURCES
     src/utils/*.cpp
     src/meshes/*.cpp
-    src/k_d_tree/*.cpp
+    src/trees/*.cpp
     src/mesh_readers/*.cpp
     src/*.cpp
 )

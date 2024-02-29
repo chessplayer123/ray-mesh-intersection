@@ -154,10 +154,7 @@ std::vector<Triangle> parse_elements(
 
 
 template<>
-TriangularMesh MeshReader::read_triangular_mesh<MeshReader::Ply>(const std::string& path) {
-    std::ifstream stream;
-    stream.open(path);
-
+TriangularMesh MeshReader::read_triangular_mesh<MeshReader::Ply>(std::istream& stream) {
     MeshReader reader(stream);
 
     const ply::Header header = parse_header(reader);

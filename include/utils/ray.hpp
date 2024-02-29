@@ -1,10 +1,13 @@
 #pragma once
 
-class Triangle;
-
-#include "utils/vector.hpp"
 #include <optional>
+#include <vector>
 #include <limits>
+#include "utils/vector.hpp"
+#include "utils/triangle.hpp"
+#include "trees/kd_tree.hpp"
+#include "meshes/triangular_mesh.hpp"
+
 
 class Ray {
 public:
@@ -13,6 +16,16 @@ public:
 
     std::optional<Vector> intersects(
         const Triangle& triangle,
+        double epsilon = std::numeric_limits<double>::epsilon()
+    ) const;
+
+    std::vector<Vector> intersects(
+        const TriangularMesh& mesh,
+        double epsilon = std::numeric_limits<double>::epsilon()
+    ) const;
+
+    std::vector<Vector> intersects(
+        const KDTree& tree,
         double epsilon = std::numeric_limits<double>::epsilon()
     ) const;
 private:

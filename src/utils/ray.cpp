@@ -1,12 +1,11 @@
 #include "utils/ray.hpp"
-#include "utils/triangle.hpp"
 #include "utils/misc.hpp"
 
 
 /*
-Read for details:
-https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
-*/
+ * Read for details:
+ * https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+ */
 std::optional<Vector> Ray::intersects(const Triangle& triangle, double epsilon) const {
     Vector edge1 = triangle.v2() - triangle.v1();
     Vector edge2 = triangle.v3() - triangle.v1();
@@ -35,4 +34,25 @@ std::optional<Vector> Ray::intersects(const Triangle& triangle, double epsilon) 
         return std::nullopt;
     }
     return origin + vector * t;
+}
+
+/*
+ * Simple iterative intersection search
+ */
+std::vector<Vector> Ray::intersects(const TriangularMesh& mesh, double epsilon) const {
+    std::vector<Vector> intersections;
+
+    for (const auto& triangle : mesh) {
+        auto intersection = intersects(triangle, epsilon);
+
+        if (intersection.has_value()) {
+            intersections.push_back(intersection.value());
+        }
+    }
+
+    return intersections;
+}
+
+std::vector<Vector> Ray::intersects(const KDTree& tree, double epsilon) const {
+    return {};
 }

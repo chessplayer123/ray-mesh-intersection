@@ -86,14 +86,10 @@ TriangularMesh parse_binary_mesh(MeshReader& reader) {
 
 
 template<>
-TriangularMesh MeshReader::read_triangular_mesh<MeshReader::Stl>(const std::string& path) {
-    std::ifstream stream;
-    stream.open(path);
+TriangularMesh MeshReader::read_triangular_mesh<MeshReader::Stl>(std::istream& stream) {
     MeshReader reader(stream);
 
     std::string magic_bytes = reader.read_as_bytes(5);
-
-
     if (magic_bytes == "solid") { // ascii
         reader.skip_word();
         return parse_ascii_mesh(reader);
