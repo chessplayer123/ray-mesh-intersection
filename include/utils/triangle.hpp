@@ -1,19 +1,40 @@
-#ifndef TRIANGLE_HPP_
-#define TRIANGLE_HPP_
+#pragma once
 
 #include <array>
-#include "utils/point.hpp"
-#include "utils/ray.hpp"
+#include "utils/vector.hpp"
 
 class Triangle {
 public:
-    Triangle(Point p1, Point p2, Point p3): points({p1, p2, p3}) {}
+    Triangle(Vector p1, Vector p2, Vector p3):
+        vertex1(p1), vertex2(p2), vertex3(p3)
+    {
+        Vector vec1 = v2() - v1();
+        Vector vec2 = v3() - v1();
+        normal = vec1.cross(vec2);
+    }
 
-    Point intersects(const Ray& ray) const;
-    Vector get_normal() const;
-    bool contains(const Point& point) const;
+    Triangle(Vector p1, Vector p2, Vector p3, Vector normal):
+        vertex1(p1), vertex2(p2), vertex3(p3), normal(normal) {}
+
+    bool contains(const Vector& point) const;
+    Vector get_barycentric_coords(const Vector& point) const;
+
+    inline const Vector& get_normal() const {
+        return normal;
+    }
+
+    inline const Vector& v1() const {
+        return vertex1;
+    }
+
+    inline const Vector& v2() const {
+        return vertex2;
+    }
+
+    inline const Vector& v3() const {
+        return vertex3;
+    }
 private:
-    std::array<Point, 3> points;
+    Vector vertex1, vertex2, vertex3;
+    Vector normal;
 };
-
-#endif // TRIANGLE_HPP_

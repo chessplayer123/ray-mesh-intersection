@@ -3,23 +3,27 @@ project(ray-mesh-intersection)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic -O2 -std=c++17")
+else()
+    set(CMAKE_CXX_FLAGS "/std:c++17")
 endif()
 
-# Library for 
+# Library for main application
 include_directories(include/)
 file(GLOB SOURCES
     src/utils/*.cpp
     src/meshes/*.cpp
-    src/octree/*.cpp
+    src/trees/*.cpp
+    src/mesh_readers/*.cpp
     src/*.cpp
 )
 add_library(Library OBJECT ${SOURCES})
 
-# Main executable
-add_executable(App apps/main.cpp)
-target_link_libraries(App PRIVATE Library)
 
-# Testing
-include_directories(external/)
-enable_testing()
-add_subdirectory(test)
+if (BUILD_APP)
+    add_subdirectory(app)
+else()
+    # Testing
+    include_directories(external/)
+    enable_testing()
+    add_subdirectory(test)
+endif()
