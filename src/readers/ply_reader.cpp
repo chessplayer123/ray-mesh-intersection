@@ -1,4 +1,4 @@
-#include "mesh_readers/reader.hpp"
+#include "readers/reader.hpp"
 #include <fstream>
 #include <unordered_map>
 #include <vector>
@@ -154,7 +154,7 @@ std::vector<Triangle> parse_elements(
 
 
 template<>
-TriangularMesh MeshReader::read_triangular_mesh<MeshReader::Ply>(std::istream& stream) {
+TriangularMesh read_triangular_mesh<DataFormat::Ply>(std::istream& stream) {
     MeshReader reader(stream);
 
     const ply::Header header = parse_header(reader);

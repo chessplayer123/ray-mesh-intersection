@@ -1,4 +1,4 @@
-#include "mesh_readers/reader.hpp"
+#include "readers/reader.hpp"
 #include <unordered_map>
 #include <fstream>
 
@@ -38,7 +38,7 @@ obj::Keyword MeshReader::read<obj::Keyword>() {
 }
 
 template<>
-TriangularMesh MeshReader::read_triangular_mesh<MeshReader::Obj>(std::istream& stream) {
+TriangularMesh read_triangular_mesh<DataFormat::Obj>(std::istream& stream) {
     MeshReader reader(stream);
 
     std::vector<Vector> vertexes;

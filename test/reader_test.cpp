@@ -1,13 +1,13 @@
 #include <catch2/catch.hpp>
 #include <fstream>
-#include "mesh_readers/reader.hpp"
+#include "readers/reader.hpp"
 
 TEST_CASE("Ply reader", "[reader]") {
     const std::string file_path = "../../data/bunny.ply";
     std::ifstream stream;
     stream.open(file_path);
 
-    auto mesh = MeshReader::read_triangular_mesh<MeshReader::Ply>(stream);
+    auto mesh = read_triangular_mesh<DataFormat::Ply>(stream);
 }
 
 TEST_CASE("Binary stl reader", "[reader]") {
@@ -15,7 +15,7 @@ TEST_CASE("Binary stl reader", "[reader]") {
     std::ifstream stream;
     stream.open(file_path);
 
-    auto mesh = MeshReader::read_triangular_mesh<MeshReader::Stl>(stream);
+    auto mesh = read_triangular_mesh<DataFormat::Stl>(stream);
 }
 
 TEST_CASE("Ascii stl reader", "[reader]") {
@@ -23,7 +23,7 @@ TEST_CASE("Ascii stl reader", "[reader]") {
     std::ifstream stream;
     stream.open(file_path);
 
-    auto mesh = MeshReader::read_triangular_mesh<MeshReader::Stl>(stream);
+    auto mesh = read_triangular_mesh<DataFormat::Stl>(stream);
 }
 
 TEST_CASE("Obj reader", "[reader]") {
@@ -31,5 +31,5 @@ TEST_CASE("Obj reader", "[reader]") {
     std::ifstream stream;
     stream.open(file_path);
 
-    auto mesh = MeshReader::read_triangular_mesh<MeshReader::Obj>(stream);
+    auto mesh = read_triangular_mesh<DataFormat::Obj>(stream);
 }

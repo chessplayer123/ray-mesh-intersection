@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION  3.5)
+cmake_minimum_required(VERSION 3.5)
 project(ray-mesh-intersection)
 
 if (CMAKE_COMPILER_IS_GNUCXX)
@@ -13,17 +13,15 @@ file(GLOB SOURCES
     src/utils/*.cpp
     src/meshes/*.cpp
     src/trees/*.cpp
-    src/mesh_readers/*.cpp
+    src/readers/*.cpp
     src/*.cpp
 )
 add_library(Library OBJECT ${SOURCES})
 
+include_directories(external/)
+enable_testing()
+add_subdirectory(test)
 
-if (BUILD_APP)
-    add_subdirectory(app)
-else()
-    # Testing
-    include_directories(external/)
-    enable_testing()
-    add_subdirectory(test)
+if (NOT ONLY_LIB)
+    add_subdirectory(app EXCLUDE_FROM_ALL)
 endif()

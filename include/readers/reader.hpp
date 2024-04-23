@@ -6,17 +6,6 @@
 
 class MeshReader {
 public:
-    enum DataFormat {
-        Ply,
-        Stl,
-        Obj
-    };
-
-    template<DataFormat>
-    static TriangularMesh read_triangular_mesh(std::istream& stream);
-
-    static DataFormat define_format(const std::string& path);
-
     MeshReader(std::istream& stream): stream(stream) {}
 
     inline void expect_line(const std::string& expected_line) {
@@ -72,3 +61,15 @@ public:
 private:
     std::istream& stream;
 };
+
+enum DataFormat {
+    Ply,
+    Stl,
+    Obj
+};
+
+template<DataFormat>
+TriangularMesh read_triangular_mesh(std::istream& stream);
+
+TriangularMesh read_triangular_mesh(const std::string& path);
+

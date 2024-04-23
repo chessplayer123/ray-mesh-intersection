@@ -1,10 +1,19 @@
 project(main-app)
 
-# Main executable
-add_executable(App main.cpp)
-
+# OpenGL
 find_package(OpenGL REQUIRED)
 find_package(GLUT REQUIRED)
-include_directories(${OPENGL_INCLUDE_DIRS} ${GLUT_INCLUDE_DIRS})
-target_link_libraries(App GL GLU glut)
-target_link_libraries(App Library)
+
+# QT
+find_package(Qt5 COMPONENTS Widgets OpenGL REQUIRED)
+
+# Main executable
+include_directories(include/)
+file(GLOB SRCS src/*.cpp)
+add_executable(App src/main.cpp ${SRCS})
+target_link_libraries(App PRIVATE
+    Library
+    Qt5::Widgets
+    Qt5::OpenGL
+    ${OPENGL_LIBRARIES}
+)

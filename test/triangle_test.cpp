@@ -2,7 +2,7 @@
 #include "utils/triangle.hpp"
 
 
-TEST_CASE("Contains point method") {
+TEST_CASE("Contains point method", "[triangle]") {
     GIVEN("Triangle") {
         Vector p1(0.3, -15, 9.7), p2(2.3, 0.01, -1), p3(1, 2, 8);
         Triangle triangle(p1, p2, p3);

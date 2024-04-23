@@ -1,4 +1,4 @@
-#include "mesh_readers/reader.hpp"
+#include "readers/reader.hpp"
 #include <fstream>
 #include <cstdint>
 
@@ -86,7 +86,7 @@ TriangularMesh parse_binary_mesh(MeshReader& reader) {
 
 
 template<>
-TriangularMesh MeshReader::read_triangular_mesh<MeshReader::Stl>(std::istream& stream) {
+TriangularMesh read_triangular_mesh<DataFormat::Stl>(std::istream& stream) {
     MeshReader reader(stream);
 
     std::string magic_bytes = reader.read_as_bytes(5);
