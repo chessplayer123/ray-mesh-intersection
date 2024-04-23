@@ -18,11 +18,8 @@ file(GLOB SOURCES
 )
 add_library(Library OBJECT ${SOURCES})
 
-# Main executable
-add_executable(App apps/main.cpp)
-target_link_libraries(App PRIVATE Library)
-
 # Testing
 include_directories(external/)
 enable_testing()
 add_subdirectory(test)
+add_subdirectory(app)

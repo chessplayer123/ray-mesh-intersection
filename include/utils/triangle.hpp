@@ -19,19 +19,19 @@ public:
     bool contains(const Vector& point) const;
     Vector get_barycentric_coords(const Vector& point) const;
 
-    constexpr const Vector& get_normal() const {
+    inline const Vector& get_normal() const {
         return normal;
     }
 
-    constexpr const Vector& v1() const {
+    inline const Vector& v1() const {
         return vertex1;
     }
 
-    constexpr const Vector& v2() const {
+    inline const Vector& v2() const {
         return vertex2;
     }
 
-    constexpr const Vector& v3() const {
+    inline const Vector& v3() const {
         return vertex3;
     }
 private:

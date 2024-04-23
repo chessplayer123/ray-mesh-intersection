@@ -1,6 +1,9 @@
 project(test)
 
 add_library(CATCH_STATIC STATIC catch.cpp)
+target_compile_definitions(CATCH_STATIC PRIVATE 
+    -DCATCH_CONFIG_ENABLE_BENCHMARKING
+)
 
 file(GLOB TEST_SOURCES *_test.cpp)
 

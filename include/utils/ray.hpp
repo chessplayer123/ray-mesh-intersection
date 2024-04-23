@@ -28,6 +28,14 @@ public:
         const KDTree& tree,
         double epsilon = std::numeric_limits<double>::epsilon()
     ) const;
+
+    inline const Vector& get_origin() const {
+        return origin;
+    }
+
+    inline const Vector& get_vector() const {
+        return vector;
+    }
 private:
     Vector origin;
     Vector vector;

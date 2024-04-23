@@ -16,8 +16,8 @@ public:
         return triangles.size();
     }
 
-    inline Triangle get_ith(size_t idx) const {
-        return triangles.at(idx);
+    inline const Triangle& get_ith(size_t idx) const {
+        return triangles[idx];
     }
 
     inline const std::vector<Triangle>::const_iterator begin() const {
