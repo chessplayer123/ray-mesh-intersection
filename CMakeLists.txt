@@ -18,8 +18,12 @@ file(GLOB SOURCES
 )
 add_library(Library OBJECT ${SOURCES})
 
-# Testing
-include_directories(external/)
-enable_testing()
-add_subdirectory(test)
-add_subdirectory(app)
+
+if (BUILD_APP)
+    add_subdirectory(app)
+else()
+    # Testing
+    include_directories(external/)
+    enable_testing()
+    add_subdirectory(test)
+endif()

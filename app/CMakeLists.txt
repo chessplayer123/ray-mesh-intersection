@@ -1,6 +1,5 @@
 project(main-app)
 
-
 # Main executable
 add_executable(App main.cpp)
 
