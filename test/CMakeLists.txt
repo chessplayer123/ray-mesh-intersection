@@ -5,7 +5,7 @@ target_compile_definitions(CATCH_STATIC PRIVATE
     -DCATCH_CONFIG_ENABLE_BENCHMARKING
 )
 
-file(GLOB TEST_SOURCES *_test.cpp)
+file(GLOB TEST_SOURCES *_test.cpp *_benchmark.cpp)
 
 foreach(TEST_FILE ${TEST_SOURCES})
     get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)

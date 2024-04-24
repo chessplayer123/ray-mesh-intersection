@@ -43,6 +43,10 @@ Vector Vector::operator*(double value) const {
     return Vector(x * value, y * value, z * value);
 }
 
+Vector Vector::operator/(double value) const {
+    return Vector(x / value, y / value, z / value);
+}
+
 Vector Vector::cross(const Vector& rhs) const {
     return Vector(
         y * rhs.z - z * rhs.y,

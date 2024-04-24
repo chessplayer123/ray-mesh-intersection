@@ -1,8 +1,10 @@
 #pragma once
 
 #include <vector>
-#include "utils/triangle.hpp"
 #include <cstddef>
+#include <vector>
+#include "utils/box.hpp"
+#include "utils/triangle.hpp"
 
 class TriangularMesh {
 public:
@@ -27,6 +29,11 @@ public:
     inline const std::vector<Triangle>::const_iterator end() const {
         return triangles.end();
     }
+
+    Box get_bounding_box(
+        std::vector<int>::const_iterator begin,
+        std::vector<int>::const_iterator end
+    ) const;
 private:
     std::vector<Triangle> triangles;
 };

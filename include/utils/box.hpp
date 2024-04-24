@@ -1,9 +1,8 @@
 #pragma once
 
+#include "utils/vector.hpp"
 
-class Box {
-public:
-private:
+struct Box {
     Vector point;
     Vector size;
 };

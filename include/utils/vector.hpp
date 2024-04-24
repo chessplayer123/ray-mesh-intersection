@@ -13,6 +13,7 @@ public:
     Vector operator+(const Vector& rhs) const;
     Vector operator-(const Vector& rhs) const;
     Vector operator*(double value) const;
+    Vector operator/(double value) const;
     bool operator==(const Vector& rhs) const;
     bool equals(const Vector& rhs, double epsilon) const;
 
