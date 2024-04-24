@@ -6,8 +6,6 @@
 
 class KDTree {
 public:
-    static const int DEFAULT_BUCKET_CAPACITY = 10;
-
     struct Node {
         Node(Box box, std::unique_ptr<Node>&& left, std::unique_ptr<Node>&& right) :
             bounding_box(box), left(std::move(left)), right(std::move(right)) {}
@@ -17,6 +15,8 @@ public:
         std::unique_ptr<Node> left;
         std::unique_ptr<Node> right;
     };
+
+    static const int DEFAULT_BUCKET_CAPACITY = 10;
 
     static KDTree for_mesh(
         const TriangularMesh& mesh,

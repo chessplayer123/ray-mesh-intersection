@@ -11,8 +11,8 @@ Box TriangularMesh::get_bounding_box(
     using std::min, std::max;
 
     double min_x, min_y, min_z, max_x, max_y, max_z;
-    min_x = min_y = min_z = std::numeric_limits<double>::min();
-    max_x = max_y = max_z = std::numeric_limits<double>::max();
+    min_x = min_y = min_z = std::numeric_limits<double>::max();
+    max_x = max_y = max_z = std::numeric_limits<double>::min();
 
     for (auto cur = begin; cur != end; std::advance(cur, 1)) {
         const Triangle& triangle = triangles[*cur];
