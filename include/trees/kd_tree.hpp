@@ -1,15 +1,10 @@
 #pragma once
 
-#include <experimental/memory>
 #include <memory>
 #include <cstddef>
 
 #include "meshes/triangular_mesh.hpp"
 #include "utils/aabbox.hpp"
-
-namespace std {
-    using std::experimental::observer_ptr;
-}
 
 class KDTree {
 public:
@@ -49,12 +44,8 @@ private:
 
 
 class KDTree::Iterator {
+    friend KDTree;
 public:
-    Iterator(
-        std::observer_ptr<Node> ptr,
-        std::observer_ptr<const TriangularMesh> mesh
-    ): ptr(ptr), mesh(mesh) {}
-
     inline bool is_leaf() const {
         return !ptr->data.empty();
     }
@@ -75,13 +66,19 @@ public:
     }
 
     inline Iterator left() const {
-        return Iterator(std::observer_ptr<Node>(ptr->left.get()), mesh);
+        return Iterator(ptr->left.get(), mesh);
     }
 
     inline Iterator right() const {
-        return Iterator(std::observer_ptr<Node>(ptr->right.get()), mesh);
+        return Iterator(ptr->right.get(), mesh);
     }
 private:
-    std::observer_ptr<Node> ptr;
-    std::observer_ptr<const TriangularMesh> mesh;
+    Iterator(
+        Node* ptr,
+        const TriangularMesh* mesh
+    ): ptr(ptr), mesh(mesh) {}
+
+    // Only observing
+    Node* ptr;
+    const TriangularMesh* mesh;
 };

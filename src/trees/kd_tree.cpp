@@ -14,8 +14,8 @@ KDTree::Node::Node(
 
 KDTree::Iterator KDTree::iterator() const {
     return KDTree::Iterator(
-        std::observer_ptr<Node>(root.get()),
-        std::observer_ptr<const TriangularMesh>(mesh.get())
+        root.get(),
+        mesh.get()
     );
 }
 
