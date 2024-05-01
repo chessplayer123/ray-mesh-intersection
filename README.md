@@ -2,11 +2,11 @@
 # Ray And Triangular Mesh Intersection
 
 ## Project structure
-- [include](include/): header files
-- [src](src/): source files
-- [apps](apps/): main application
-- [test](test/): unit test files
-- [external](external/): dependencies
+- [include](include/): public header files
+- [src](src/): library source files
+- [app](app/): main application
+- [test](test/): unittest and benchmark files
+- [external](external/): external dependencies
 - [data](data/): models
 
 
