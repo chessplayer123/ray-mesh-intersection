@@ -18,12 +18,12 @@ std::optional<Vector> Ray::intersects(const Triangle& triangle, double epsilon) 
     double inv_det = 1.0 / det;
 
     Vector s = origin - triangle.v1();
-    double u = -inv_det * s.dot(ray_cross_e2);
+    double u = inv_det * s.dot(ray_cross_e2);
     if (!inside_inclusive_range(0.0, u, 1.0)) {
         return std::nullopt;
     }
 
-    Vector s_cross_e1 = edge1.cross(s);
+    Vector s_cross_e1 = s.cross(edge1);
     double v = inv_det * vector.dot(s_cross_e1);
     if (v < 0.0 || u + v > 1.0) {
         return std::nullopt;
@@ -53,6 +53,54 @@ std::vector<Vector> Ray::intersects(const TriangularMesh& mesh, double epsilon) 
     return intersections;
 }
 
+bool Ray::intersects(const AABBox& box) const {
+    Vector t1 = (box.min - origin) * inv_origin;
+    Vector t2 = (box.max - origin) * inv_origin;
+
+    double tmin = std::min(t1.x(), t2.x());
+    double tmax = std::max(t1.x(), t2.x());
+
+    tmin = std::max(tmin, std::min(t1.y(), t2.y()));
+    tmax = std::min(tmax, std::max(t1.y(), t2.y()));
+
+    tmin = std::max(tmin, std::min(t1.z(), t2.z()));
+    tmax = std::min(tmax, std::max(t1.z(), t2.z()));
+
+    return tmax >= 0 && tmin <= tmax;
+}
+
+void recursive_intersects(
+    const Ray& ray,
+    KDTree::Iterator iter,
+    std::vector<Vector>& output,
+    double epsilon
+) {
+    if (iter.is_leaf()) {
+        for (const Triangle& triangle : iter.triangles()) {
+            auto intersection = ray.intersects(triangle, epsilon);
+            if (intersection.has_value()) {
+                output.push_back(intersection.value());
+            }
+        }
+        return;
+    }
+
+    if (auto left = iter.left(); ray.intersects(left.box())) {
+        recursive_intersects(ray, left, output, epsilon);
+    }
+
+    if (auto right = iter.right(); ray.intersects(right.box())) {
+        recursive_intersects(ray, right, output, epsilon);
+    }
+}
+
 std::vector<Vector> Ray::intersects(const KDTree& tree, double epsilon) const {
-    return {};
+    KDTree::Iterator iterator = tree.iterator();
+    if (!intersects(iterator.box())) {
+        return {};
+    }
+
+    std::vector<Vector> output;
+    recursive_intersects(*this, iterator, output, epsilon);
+    return output;
 }

@@ -20,7 +20,7 @@ Vector Triangle::get_barycentric_coords(const Vector& point) const {
 bool Triangle::contains(const Vector& point) const {
     Vector barycentric = get_barycentric_coords(point);
 
-    return inside_inclusive_range(0.0, barycentric.get_x(), 1.0)
-        && inside_inclusive_range(0.0, barycentric.get_y(), 1.0)
-        && inside_inclusive_range(0.0, barycentric.get_z(), 1.0);
+    return inside_inclusive_range(0.0, barycentric.x(), 1.0)
+        && inside_inclusive_range(0.0, barycentric.y(), 1.0)
+        && inside_inclusive_range(0.0, barycentric.z(), 1.0);
 }

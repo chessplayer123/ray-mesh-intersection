@@ -4,12 +4,12 @@
 
 
 std::ostream& operator<<(std::ostream& stream, const Vector& vec) {
-    stream << "Vector(" << vec.x << ", " << vec.y << ", " << vec.z << ")";
+    stream << "Vector(" << vec.m_x << ", " << vec.m_y << ", " << vec.m_z << ")";
     return stream;
 }
 
 double Vector::length() const {
-    return sqrt(x*x + y*y + z*z);
+    return sqrt(m_x*m_x + m_y*m_y + m_z*m_z);
 }
 
 double Vector::angle(const Vector& rhs) const {
@@ -22,44 +22,52 @@ double Vector::angle(const Vector& rhs) const {
 }
 
 Vector Vector::operator+(const Vector& rhs) const {
-    return Vector(x + rhs.x, y + rhs.y, z + rhs.z);
+    return Vector(m_x + rhs.m_x, m_y + rhs.m_y, m_z + rhs.m_z);
 }
 
 bool Vector::operator==(const Vector& rhs) const {
-    return x == rhs.x && y == rhs.y && z == rhs.z;
+    return m_x == rhs.m_x && m_y == rhs.m_y && m_z == rhs.m_z;
+}
+
+bool Vector::operator!=(const Vector& rhs) const {
+    return m_x != rhs.m_x || m_y != rhs.m_y || m_z != rhs.m_z;
 }
 
 bool Vector::equals(const Vector& rhs, double epsilon) const {
-    return abs(x - rhs.x) < epsilon
-        && abs(y - rhs.y) < epsilon
-        && abs(z - rhs.z) < epsilon;
+    return abs(m_x - rhs.m_x) < epsilon
+        && abs(m_y - rhs.m_y) < epsilon
+        && abs(m_z - rhs.m_z) < epsilon;
 }
 
 Vector Vector::operator-(const Vector& rhs) const {
-    return Vector(x - rhs.x, y - rhs.y, z - rhs.z);
+    return Vector(m_x - rhs.m_x, m_y - rhs.m_y, m_z - rhs.m_z);
 }
 
 Vector Vector::operator*(double value) const {
-    return Vector(x * value, y * value, z * value);
+    return Vector(m_x * value, m_y * value, m_z * value);
+}
+
+Vector Vector::operator*(const Vector& rhs) const {
+    return Vector(m_x * rhs.m_x, m_y * rhs.m_y, m_z * rhs.m_z);
 }
 
 Vector Vector::operator/(double value) const {
-    return Vector(x / value, y / value, z / value);
+    return Vector(m_x / value, m_y / value, m_z / value);
 }
 
 Vector Vector::cross(const Vector& rhs) const {
     return Vector(
-        y * rhs.z - z * rhs.y,
-        x * rhs.z - z * rhs.x,
-        x * rhs.y - y * rhs.x
+        m_y * rhs.m_z - m_z * rhs.m_y,
+        m_z * rhs.m_x - m_x * rhs.m_z,
+        m_x * rhs.m_y - m_y * rhs.m_x
     );
 }
 
 double Vector::dot(const Vector& rhs) const {
-    return x * rhs.x + y * rhs.y + z * rhs.z;
+    return m_x * rhs.m_x + m_y * rhs.m_y + m_z * rhs.m_z;
 }
 
 Vector Vector::ort() const {
     double len = length();
-    return Vector(x / len, y / len, z / len);
+    return Vector(m_x / len, m_y / len, m_z / len);
 }

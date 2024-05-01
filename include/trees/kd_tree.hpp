@@ -1,30 +1,87 @@
 #pragma once
 
+#include <experimental/memory>
 #include <memory>
+#include <cstddef>
+
 #include "meshes/triangular_mesh.hpp"
-#include "utils/box.hpp"
+#include "utils/aabbox.hpp"
+
+namespace std {
+    using std::experimental::observer_ptr;
+}
 
 class KDTree {
 public:
-    struct Node {
-        Node(Box box, std::unique_ptr<Node>&& left, std::unique_ptr<Node>&& right) :
-            bounding_box(box), left(std::move(left)), right(std::move(right)) {}
+    class Iterator;
 
-        // TODO: store triangle data
-        Box bounding_box;
+    static KDTree for_mesh(
+        std::shared_ptr<const TriangularMesh> mesh,
+        int max_depth = 16
+    );
+
+    Iterator iterator() const;
+private:
+    struct Node {
+        static std::unique_ptr<Node> build(
+            std::vector<size_t>::iterator begin,
+            std::vector<size_t>::iterator end,
+            std::shared_ptr<const TriangularMesh> mesh,
+            int max_depth,
+            int depth
+        );
+
+        Node(AABBox box, std::vector<size_t> data, std::unique_ptr<Node>&& left, std::unique_ptr<Node>&& right);
+
+        AABBox bounding_box;
+        std::vector<size_t> data;
         std::unique_ptr<Node> left;
         std::unique_ptr<Node> right;
     };
 
-    static const int DEFAULT_BUCKET_CAPACITY = 10;
-
-    static KDTree for_mesh(
-        const TriangularMesh& mesh,
-        int bucket_capacity = DEFAULT_BUCKET_CAPACITY
-    );
-private:
-    KDTree(std::unique_ptr<Node>& root) : root(std::move(root)) {
-    }
+    KDTree(std::unique_ptr<Node>& root, std::shared_ptr<const TriangularMesh> mesh)
+        : root(std::move(root)), mesh(mesh) {}
 
     std::unique_ptr<Node> root;
+    std::shared_ptr<const TriangularMesh> mesh;
+};
+
+
+
+class KDTree::Iterator {
+public:
+    Iterator(
+        std::observer_ptr<Node> ptr,
+        std::observer_ptr<const TriangularMesh> mesh
+    ): ptr(ptr), mesh(mesh) {}
+
+    inline bool is_leaf() const {
+        return !ptr->data.empty();
+    }
+
+    inline AABBox box() const {
+        return ptr->bounding_box;
+    }
+
+    std::vector<Triangle> triangles() const {
+        std::vector<Triangle> triangles;
+        triangles.reserve(ptr->data.size());
+
+        for (size_t index : ptr->data) {
+            triangles.push_back(mesh->get_ith(index));
+        }
+
+        return triangles;
+    }
+
+    inline Iterator left() const {
+        return Iterator(std::observer_ptr<Node>(ptr->left.get()), mesh);
+    }
+
+    inline Iterator right() const {
+        return Iterator(std::observer_ptr<Node>(ptr->right.get()), mesh);
+    }
+private:
+    std::observer_ptr<Node> ptr;
+    std::observer_ptr<const TriangularMesh> mesh;
 };

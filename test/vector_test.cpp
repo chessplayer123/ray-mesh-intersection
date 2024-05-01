@@ -64,7 +64,7 @@ TEST_CASE("Binary operations", "[vector]") {
 
         WHEN("Calculating cross product") {
             Vector actual_result = vec1.cross(vec2);
-            Vector expected_result(-6.55, 11.1, 0.5);
+            Vector expected_result(-6.55, -11.1, 0.5);
 
             THEN("Actual result equals to expected") {
                 REQUIRE(actual_result == expected_result);

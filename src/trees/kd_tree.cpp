@@ -4,51 +4,71 @@
 
 #define DIM 3
 
-static std::unique_ptr<KDTree::Node> build_tree(
-    std::vector<int>::iterator begin,
-    std::vector<int>::iterator end,
-    const TriangularMesh& mesh,
-    int capacity,
+KDTree::Node::Node(
+    AABBox box,
+    std::vector<size_t> data,
+    std::unique_ptr<Node>&& left,
+    std::unique_ptr<Node>&& right
+): bounding_box(box), data(data), left(std::move(left)), right(std::move(right)) {
+}
+
+KDTree::Iterator KDTree::iterator() const {
+    return KDTree::Iterator(
+        std::observer_ptr<Node>(root.get()),
+        std::observer_ptr<const TriangularMesh>(mesh.get())
+    );
+}
+
+std::unique_ptr<KDTree::Node> KDTree::Node::build(
+    std::vector<size_t>::iterator begin,
+    std::vector<size_t>::iterator end,
+    std::shared_ptr<const TriangularMesh> mesh,
+    int max_depth,
     int depth
 ) {
     int length = std::distance(begin, end);
+
     if (length <= 0) {
         return nullptr;
-    } else if (length <= capacity) {
-        return std::make_unique<KDTree::Node>(
-            mesh.get_bounding_box(begin, end),
+    } else if (length == 1 || depth >= max_depth) {
+        std::vector<size_t> indexes(length);
+        std::copy(begin, end, indexes.begin());
+        return std::make_unique<Node>(
+            mesh->get_bounding_box(begin, end),
+            indexes,
             nullptr, nullptr
         );
     }
 
     switch (depth % DIM) {
     case 0:
-        std::sort(begin, end, [&mesh](int i, int j) {
-            return mesh.get_ith(i).x_center() < mesh.get_ith(j).x_center();
+        std::sort(begin, end, [&mesh](size_t i, size_t j) {
+            return mesh->get_ith(i).x_center() < mesh->get_ith(j).x_center();
         }); break;
     case 1:
-        std::sort(begin, end, [&mesh](int i, int j) {
-            return mesh.get_ith(i).y_center() < mesh.get_ith(j).y_center();
+        std::sort(begin, end, [&mesh](size_t i, size_t j) {
+            return mesh->get_ith(i).y_center() < mesh->get_ith(j).y_center();
         }); break;
     case 2:
-        std::sort(begin, end, [&mesh](int i, int j) {
-            return mesh.get_ith(i).z_center() < mesh.get_ith(j).z_center();
+        std::sort(begin, end, [&mesh](size_t i, size_t j) {
+            return mesh->get_ith(i).z_center() < mesh->get_ith(j).z_center();
         }); break;
     }
 
     auto middle = std::next(begin, length / 2);
-    auto node = std::make_unique<KDTree::Node>(
-        mesh.get_bounding_box(middle, std::next(middle)),
-        build_tree(begin, middle, mesh, capacity, depth + 1),
-        build_tree(std::next(middle), end, mesh, capacity, depth + 1)
+    auto node = std::make_unique<Node>(
+        mesh->get_bounding_box(begin, end),
+        std::vector<size_t>(),
+        build(begin, middle, mesh, max_depth, depth + 1),
+        build(middle, end, mesh, max_depth, depth + 1)
     );
     return node;
 }
 
-KDTree KDTree::for_mesh(const TriangularMesh& mesh, int bucket_capacity) {
-    std::vector<int> idxs(mesh.size());
+KDTree KDTree::for_mesh(std::shared_ptr<const TriangularMesh> mesh, int max_depth) {
+    std::vector<size_t> idxs(mesh->size());
     std::iota(idxs.begin(), idxs.end(), 0);
 
-    auto root = build_tree(idxs.begin(), idxs.end(), mesh, bucket_capacity, 0);
-    return KDTree(root);
+    auto root = Node::build(idxs.begin(), idxs.end(), mesh, max_depth, 0);
+    return KDTree(root, mesh);
 }

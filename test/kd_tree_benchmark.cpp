@@ -7,7 +7,7 @@
 
 TEST_CASE("K-D Tree Building", "[benchmark][kdtree]") {
     const std::string filename = "../../data/bunny.ply";
-    const TriangularMesh mesh = read_triangular_mesh(filename);
+    auto mesh = std::make_shared<const TriangularMesh>(read_triangular_mesh(filename));
 
     BENCHMARK("K-D Tree Building Benchmark") {
         return KDTree::for_mesh(mesh);

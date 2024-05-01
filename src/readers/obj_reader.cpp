@@ -48,18 +48,17 @@ TriangularMesh read_triangular_mesh<DataFormat::Obj>(std::istream& stream) {
     while (has_data) {
         auto kw = reader.read<obj::Keyword>();
         switch (kw) {
-            case obj::Vertex:
-                vertexes.emplace_back(
-                    reader.read<double>(),
-                    reader.read<double>(),
-                    reader.read<double>()
-                );
-                break;
+            case obj::Vertex: {
+                double x = reader.read<double>();
+                double y = reader.read<double>();
+                double z = reader.read<double>();
+                vertexes.emplace_back(x, y, z);
+            } break;
             case obj::Face:
                 triangles.emplace_back(
-                    vertexes[reader.read<int>()],
-                    vertexes[reader.read<int>()],
-                    vertexes[reader.read<int>()]
+                    vertexes[reader.read<int>() - 1],
+                    vertexes[reader.read<int>() - 1],
+                    vertexes[reader.read<int>() - 1]
                 );
                 break;
             case obj::Comment:

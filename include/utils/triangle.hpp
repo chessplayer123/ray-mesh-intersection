@@ -18,6 +18,7 @@ public:
         normal(normal), center((p1+ p2 +p3) / 3.0) {}
 
     bool contains(const Vector& point) const;
+
     Vector get_barycentric_coords(const Vector& point) const;
 
     inline const Vector& get_normal() const {
@@ -37,15 +38,15 @@ public:
     }
 
     inline double x_center() const {
-        return center.get_x();
+        return center.x();
     }
 
     inline double y_center() const {
-        return center.get_y();
+        return center.y();
     }
 
     inline double z_center() const {
-        return center.get_z();
+        return center.z();
     }
 private:
     Vector vertex1, vertex2, vertex3;
