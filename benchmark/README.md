@@ -1,4 +1,4 @@
-#### Benchmark for a [triangular mesh](data/bunny.ply) consisting of `69451` triangles
+#### Benchmark for a [triangular mesh](../data/bunny.ply) consisting of `69451` triangles
 |   Method  |Samples|            Range                 |        Mean      |     Std Dev    |
 |-----------|:-----:|:--------------------------------:|:----------------:|:--------------:|
 |`Iterative`|  100  |**2.3333** _ms_ - **2.34581** _ms_| **2.33979** _ms_ |**31.7994** _µs_|
