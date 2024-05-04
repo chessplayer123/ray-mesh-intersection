@@ -71,7 +71,7 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
 TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
     GIVEN("Ray outside AABB with intersection") {
         Ray ray(Vector(2, 2, 2), Vector(-1, -1, -1));
-        AABBox aabb(Vector(-1, -1, -1), Vector(1, 1, 1));
+        AABBox aabb = {Vector(-1, -1, -1), Vector(1, 1, 1)};
         WHEN("Checking whether they intersects") {
             bool is_intersects = ray.intersects(aabb);
             THEN("Should return true") {
@@ -82,7 +82,7 @@ TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
 
     GIVEN("Ray outside AABB without intersection") {
         Ray ray(Vector(10, 2, 2), Vector(1, 1, 1));
-        AABBox aabb(Vector(-1, -1, -1), Vector(1, 1, 1));
+        AABBox aabb = {Vector(-1, -1, -1), Vector(1, 1, 1)};
         WHEN("Checking whether they intersects") {
             bool is_intersects = ray.intersects(aabb);
             THEN("Should return false") {
@@ -93,7 +93,7 @@ TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
 
     GIVEN("Ray above AABB without intersection") {
         Ray ray(Vector(2, 2, 2), Vector(-1, -1, 0));
-        AABBox aabb(Vector(-1, -1, -1), Vector(1, 1, 1));
+        AABBox aabb = {Vector(-1, -1, -1), Vector(1, 1, 1)};
         WHEN("Checking whether they intersects") {
             bool is_intersects = ray.intersects(aabb);
             THEN("Should return false") {
@@ -104,7 +104,7 @@ TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
 
     GIVEN("Ray inside AABB") {
         Ray ray(Vector(0, 0, 0), Vector(1, 0, 0));
-        AABBox aabb(Vector(-1, -1, -1), Vector(1, 1, 1));
+        AABBox aabb = {Vector(-1, -1, -1), Vector(1, 1, 1)};
         WHEN("Checking whether they intersects") {
             bool is_intersects = ray.intersects(aabb);
             THEN("Should return true") {

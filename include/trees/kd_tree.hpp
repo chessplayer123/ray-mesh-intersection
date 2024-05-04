@@ -6,6 +6,7 @@
 #include "meshes/triangular_mesh.hpp"
 #include "utils/aabbox.hpp"
 
+
 class KDTree {
 public:
     class Iterator;
@@ -42,7 +43,6 @@ private:
 };
 
 
-
 class KDTree::Iterator {
     friend KDTree;
 public:
@@ -74,11 +74,11 @@ public:
     }
 private:
     Iterator(
-        Node* ptr,
+        const Node* ptr,
         const TriangularMesh* mesh
     ): ptr(ptr), mesh(mesh) {}
 
     // Only observing
-    Node* ptr;
+    const Node* ptr;
     const TriangularMesh* mesh;
 };

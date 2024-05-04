@@ -25,6 +25,18 @@ Vector Vector::operator+(const Vector& rhs) const {
     return Vector(m_x + rhs.m_x, m_y + rhs.m_y, m_z + rhs.m_z);
 }
 
+void Vector::operator+=(const Vector& rhs) {
+    m_x += rhs.m_x;
+    m_y += rhs.m_y;
+    m_z += rhs.m_z;
+}
+
+void Vector::operator-=(const Vector& rhs) {
+    m_x -= rhs.m_x;
+    m_y -= rhs.m_y;
+    m_z -= rhs.m_z;
+}
+
 bool Vector::operator==(const Vector& rhs) const {
     return m_x == rhs.m_x && m_y == rhs.m_y && m_z == rhs.m_z;
 }

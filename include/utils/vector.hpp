@@ -11,7 +11,9 @@ public:
     Vector(double x, double y, double z): m_x(x), m_y(y), m_z(z) {}
 
     Vector operator+(const Vector& rhs) const;
+    void operator+=(const Vector& rhs);
     Vector operator-(const Vector& rhs) const;
+    void operator-=(const Vector& rhs);
     Vector operator*(double value) const;
     Vector operator*(const Vector& rhs) const;
     Vector operator/(double value) const;
@@ -24,17 +26,10 @@ public:
     Vector cross(const Vector& rhs) const;
     double dot(const Vector& rhs) const;
     Vector ort() const;
-    inline double min() const {
-        return std::min(m_x, std::min(m_y, m_z));
-    }
-    inline double max() const {
-        return std::max(m_x, std::max(m_y, m_z));
-    }
 
     inline double x() const { return m_x; }
     inline double y() const { return m_y; }
     inline double z() const { return m_z; }
-
 private:
     double m_x;
     double m_y;

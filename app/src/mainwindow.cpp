@@ -1,5 +1,6 @@
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QShortcut>
 #include <QFileDialog>
 #include <fstream>
 #include <string>
@@ -9,10 +10,12 @@
 MainWindow::MainWindow(QWidget* parent): QMainWindow(parent) {
     meshViewer = std::make_unique<MeshViewer>(this);
     setCentralWidget(meshViewer.get());
+    meshViewer->setFocusPolicy(Qt::StrongFocus);
 
     auto openAction = new QAction("Open", this);
-    connect(openAction, &QAction::triggered, this, &MainWindow::openFile);
     menuBar()->addAction(openAction);
+    openAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_O));
+    connect(openAction, &QAction::triggered, this, &MainWindow::openFile);
 }
 
 MainWindow::~MainWindow() {
@@ -28,12 +31,6 @@ void MainWindow::openFile() {
 
     try {
         TriangularMesh mesh = read_triangular_mesh(filePath);
-        QMessageBox::information(
-            this,
-            "Triangular mesh was successfully read",
-            QString("Size of mesh: %1 triangle(-s)")
-                .arg(QString::number(mesh.size()))
-        );
         meshViewer->setMesh(std::move(mesh));
     } catch (char const* error_msg) {
         QMessageBox::critical(this, "Can't read file", QString(error_msg));
