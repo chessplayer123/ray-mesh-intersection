@@ -1,9 +1,9 @@
 #include <catch2/catch.hpp>
 
 #include <sstream>
-#include "utils/ray.hpp"
-#include "utils/triangle.hpp"
-#include "readers/reader.hpp"
+#include "rmilib/ray.hpp"
+#include "rmilib/triangle.hpp"
+#include "rmilib/reader.hpp"
 
 #define EPSILON 0.00001
 

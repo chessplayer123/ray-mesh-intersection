@@ -13,15 +13,14 @@
 ## Build
 ### Linux
 ```
-cmake -S . -B build
+cmake -S . -B build [-DBUILD_TESTS=on] [-DBUILD_QT_APP=on] [-DBUILD_WASM=on]
 cd build
 make -j%
 ```
 
 ## Tests
 ```
-ctest
-```
-```
-make test
+ctest -j%
+ctest -j% -L benchmark
+ctest -j% -L unittest
 ```

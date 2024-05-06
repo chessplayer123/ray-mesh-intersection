@@ -2,7 +2,7 @@
 
 #include <string>
 #include <memory>
-#include "meshes/triangular_mesh.hpp"
+#include "triangular_mesh.hpp"
 
 class MeshReader {
 public:

@@ -1,6 +1,9 @@
-#include "utils/triangle.hpp"
-#include "utils/misc.hpp"
+#include "triangle.hpp"
+#include "vector.hpp"
 
+inline bool inside_inclusive_range(double left, double value, double right) {
+    return left <= value && value <= right;
+}
 
 Vector Triangle::get_barycentric_coords(const Vector& point) const {
     Vector vec0 = v2() - v1(), vec1 = v3() - v1(), vec2 = point - v1();

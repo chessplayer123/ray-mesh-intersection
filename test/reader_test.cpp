@@ -1,6 +1,6 @@
 #include <catch2/catch.hpp>
 #include <fstream>
-#include "readers/reader.hpp"
+#include "rmilib/reader.hpp"
 
 TEST_CASE("Ply reader", "[reader]") {
     const std::string file_path = "../../data/bunny.ply";

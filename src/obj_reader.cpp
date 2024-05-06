@@ -1,4 +1,4 @@
-#include "readers/reader.hpp"
+#include "reader.hpp"
 #include <unordered_map>
 #include <fstream>
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <array>
-#include "utils/vector.hpp"
+#include "vector.hpp"
 
 class Triangle {
 public:

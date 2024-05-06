@@ -1,7 +1,11 @@
-#include "utils/vector.hpp"
-#include "utils/misc.hpp"
+#include "vector.hpp"
 #include <math.h>
 
+inline double cast_range(double left, double value, double right) {
+    if (value < left) return left;
+    else if (right < value) return right;
+    return value;
+}
 
 std::ostream& operator<<(std::ostream& stream, const Vector& vec) {
     stream << "Vector(" << vec.m_x << ", " << vec.m_y << ", " << vec.m_z << ")";

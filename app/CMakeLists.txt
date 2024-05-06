@@ -10,9 +10,9 @@ find_package(Qt5 COMPONENTS Widgets OpenGL REQUIRED)
 # Main executable
 include_directories(include/)
 file(GLOB SRCS src/*.cpp)
-add_executable(App src/main.cpp ${SRCS})
-target_link_libraries(App PRIVATE
-    Library
+add_executable(qt_app src/main.cpp ${SRCS})
+target_link_libraries(qt_app PRIVATE
+    rmilib
     Qt5::Widgets
     Qt5::OpenGL
     ${OPENGL_LIBRARIES}

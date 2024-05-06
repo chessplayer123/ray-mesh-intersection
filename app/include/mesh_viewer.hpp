@@ -4,8 +4,8 @@
 #include <QOpenGLWidget>
 #include <QMouseEvent>
 #include "camera.hpp"
-#include "meshes/triangular_mesh.hpp"
-#include "trees/kd_tree.hpp"
+#include "rmilib/triangular_mesh.hpp"
+#include "rmilib/kd_tree.hpp"
 
 class MeshViewer: public QOpenGLWidget {
 public:

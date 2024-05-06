@@ -4,7 +4,7 @@
 #include <QFileDialog>
 #include <fstream>
 #include <string>
-#include <readers/reader.hpp>
+#include <rmilib/reader.hpp>
 #include "mainwindow.hpp"
 
 MainWindow::MainWindow(QWidget* parent): QMainWindow(parent) {

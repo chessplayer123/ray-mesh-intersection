@@ -3,8 +3,8 @@
 #include <memory>
 #include <cstddef>
 
-#include "meshes/triangular_mesh.hpp"
-#include "utils/aabbox.hpp"
+#include "triangular_mesh.hpp"
+#include "aabbox.hpp"
 
 
 class KDTree {

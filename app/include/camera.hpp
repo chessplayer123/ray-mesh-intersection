@@ -1,7 +1,7 @@
 #pragma once
 
-#include "utils/vector.hpp"
-#include "utils/ray.hpp"
+#include "rmilib/vector.hpp"
+#include "rmilib/ray.hpp"
 
 
 class Camera {

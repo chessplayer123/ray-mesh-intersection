@@ -1,8 +1,9 @@
+#include "mesh_viewer.hpp"
+#include "rmilib/ray.hpp"
+
 #include <QDebug>
 #include <QPainter>
 #include <chrono>
-#include "mesh_viewer.hpp"
-#include "utils/ray.hpp"
 
 
 MeshViewer::MeshViewer(QWidget* parent):

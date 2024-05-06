@@ -1,6 +1,6 @@
 #pragma once
 
-#include "utils/vector.hpp"
+#include "vector.hpp"
 
 // Axis-aligned bounding box
 struct AABBox {

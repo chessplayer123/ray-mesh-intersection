@@ -3,8 +3,8 @@
 #include <vector>
 #include <cstddef>
 #include <vector>
-#include "utils/aabbox.hpp"
-#include "utils/triangle.hpp"
+#include "aabbox.hpp"
+#include "triangle.hpp"
 
 class TriangularMesh {
 public:
@@ -22,11 +22,11 @@ public:
         return triangles[idx];
     }
 
-    inline const std::vector<Triangle>::const_iterator begin() const {
+    inline std::vector<Triangle>::const_iterator begin() const {
         return triangles.begin();
     }
 
-    inline const std::vector<Triangle>::const_iterator end() const {
+    inline std::vector<Triangle>::const_iterator end() const {
         return triangles.end();
     }
 

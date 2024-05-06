@@ -4,10 +4,10 @@
 #include <iostream>
 #include <fstream>
 #include <time.h>
-#include "trees/kd_tree.hpp"
-#include "readers/reader.hpp"
-#include "utils/ray.hpp"
-#include "utils/triangle.hpp"
+#include "rmilib/kd_tree.hpp"
+#include "rmilib/reader.hpp"
+#include "rmilib/ray.hpp"
+#include "rmilib/triangle.hpp"
 
 double randd() {
     double v1 = static_cast<double>(rand());

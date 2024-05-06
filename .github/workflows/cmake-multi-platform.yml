@@ -54,7 +54,7 @@ jobs:
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DONLY_LIB=true
+        -DBUILD_TESTS=on
         -S ${{ github.workspace }}
 
     - name: Build

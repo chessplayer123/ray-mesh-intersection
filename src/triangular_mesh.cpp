@@ -1,4 +1,4 @@
-#include "meshes/triangular_mesh.hpp"
+#include "triangular_mesh.hpp"
 #include <iterator>
 #include <algorithm>
 #include <limits>

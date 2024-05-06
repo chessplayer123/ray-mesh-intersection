@@ -1,27 +1,23 @@
 cmake_minimum_required(VERSION 3.5)
-project(ray-mesh-intersection)
+project(RAY_MESH_INTERSECTION)
+
 
 if (CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic -O2 -std=c++17")
-else()
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS "/std:c++17")
 endif()
 
-# Library for main application
-include_directories(include/)
-file(GLOB SOURCES
-    src/utils/*.cpp
-    src/meshes/*.cpp
-    src/trees/*.cpp
-    src/readers/*.cpp
-    src/*.cpp
-)
-add_library(Library OBJECT ${SOURCES})
 
 include_directories(external/)
-enable_testing()
-add_subdirectory(test)
-
-if (NOT ONLY_LIB)
-    add_subdirectory(app EXCLUDE_FROM_ALL)
+add_subdirectory(src/)
+if (BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(test)
+endif()
+if (BUILD_QT_APP)
+    add_subdirectory(app)
+endif()
+if (BUILD_WASM)
+    add_subdirectory(web)
 endif()

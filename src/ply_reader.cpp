@@ -1,9 +1,9 @@
-#include "readers/reader.hpp"
+#include "reader.hpp"
 #include <fstream>
 #include <unordered_map>
 #include <vector>
-#include <utils/vector.hpp>
-#include <utils/triangle.hpp>
+#include <vector.hpp>
+#include <triangle.hpp>
 
 namespace ply {
 

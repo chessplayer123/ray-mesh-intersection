@@ -3,11 +3,11 @@
 #include <optional>
 #include <vector>
 #include <limits>
-#include "utils/vector.hpp"
-#include "utils/triangle.hpp"
-#include "utils/aabbox.hpp"
-#include "trees/kd_tree.hpp"
-#include "meshes/triangular_mesh.hpp"
+#include "vector.hpp"
+#include "triangle.hpp"
+#include "aabbox.hpp"
+#include "kd_tree.hpp"
+#include "triangular_mesh.hpp"
 
 
 class Ray {

@@ -1,5 +1,4 @@
-#include "utils/ray.hpp"
-#include "utils/misc.hpp"
+#include "ray.hpp"
 
 
 /*
@@ -12,14 +11,14 @@ std::optional<Vector> Ray::intersects(const Triangle& triangle, double epsilon) 
     Vector ray_cross_e2 = vector.cross(edge2);
 
     double det = edge1.dot(ray_cross_e2);
-    if (inside_exclusive_range(-epsilon, det, epsilon)) {
+    if (-epsilon <= det && det <= epsilon) {
         return std::nullopt;
     }
     double inv_det = 1.0 / det;
 
     Vector s = origin - triangle.v1();
     double u = inv_det * s.dot(ray_cross_e2);
-    if (!inside_inclusive_range(0.0, u, 1.0)) {
+    if (u < 0.0 || u > 1.0) {
         return std::nullopt;
     }
 
