@@ -1,10 +1,10 @@
 #pragma once
 
-#include "kd_tree.hpp"
-#include "ray.hpp"
-#include "wsq.hpp"
-
 #include <thread>
+
+#include "kd_tree.hpp"
+#include "wsq.hpp"
+#include "ray.hpp"
 
 
 class ThreadPool {

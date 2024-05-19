@@ -9,9 +9,24 @@ target_include_directories(
     PUBLIC $<BUILD_INTERFACE:${RAY_MESH_INTERSECTION_SOURCE_DIR}/include/>
     PRIVATE ${header_path}
 )
-target_link_libraries(rmilib PUBLIC atomic)
 
-if (USE_OMP)
+set(BACKEND "none" CACHE STRING "Backend for parallel evaluation")
+
+message(STATUS "Using ${BACKEND} for parallel execution")
+if (${BACKEND} STREQUAL "POOL")
+    target_link_libraries(rmilib PUBLIC atomic)
+    set(BACKEND 1)
+elseif(${BACKEND} STREQUAL "OPENMP")
     find_package(OpenMP REQUIRED)
     target_link_libraries(rmilib PUBLIC OpenMP::OpenMP_CXX)
+    set(BACKEND 2)
+else()
+    set(BACKEND 0)
 endif()
+
+target_compile_definitions(rmilib PRIVATE
+    RMI_BACKEND_NONE=0
+    RMI_BACKEND_POOL=1
+    RMI_BACKEND_OPENMP=2
+    RMI_BACKEND=${BACKEND}
+)

@@ -1,5 +1,6 @@
 #include "mesh_viewer.hpp"
 #include "rmilib/ray.hpp"
+#include "rmilib/parallel_algos.hpp"
 
 #include <QDebug>
 #include <QPainter>
@@ -140,7 +141,7 @@ void MeshViewer::updateFrame() {
 
 void MeshViewer::findIntersections() {
     auto start = steady_clock::now();
-    intersections = camera.eye_ray().intersects_parallel(*tree, 4);
+    intersections = parallel_intersects(camera.eye_ray(), *tree, 4);
     auto parallel_time_delta = duration_cast<microseconds>(steady_clock::now() - start).count();
 
     start = steady_clock::now();

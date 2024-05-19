@@ -3,6 +3,7 @@
 #include <optional>
 #include <vector>
 #include <limits>
+
 #include "vector.hpp"
 #include "triangle.hpp"
 #include "aabbox.hpp"
@@ -36,12 +37,6 @@ public:
 
     std::vector<Vector> intersects(
         const KDTree& tree,
-        double epsilon = std::numeric_limits<double>::epsilon()
-    ) const;
-
-    std::vector<Vector> intersects_parallel(
-        const KDTree& tree,
-        int threads_count,
         double epsilon = std::numeric_limits<double>::epsilon()
     ) const;
 private:

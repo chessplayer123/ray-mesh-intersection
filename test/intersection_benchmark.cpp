@@ -11,6 +11,7 @@
 #include "rmilib/reader.hpp"
 #include "rmilib/ray.hpp"
 #include "rmilib/triangle.hpp"
+#include "rmilib/parallel_algos.hpp"
 
 
 class SampleGenerator {
@@ -73,7 +74,7 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
     ))(auto meter) {
         Ray ray = generator.next_ray();
         meter.measure([&ray, &kdtree, threads_count] {
-            return ray.intersects_parallel(kdtree, threads_count);
+            return parallel_intersects(ray, kdtree, threads_count);
         });
     };
 }

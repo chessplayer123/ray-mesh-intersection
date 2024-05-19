@@ -1,5 +1,4 @@
 #include "ray.hpp"
-#include "thread_pool.hpp"
 
 #include <queue>
 #include <array>
@@ -116,19 +115,4 @@ std::vector<Vector> Ray::intersects(const KDTree& tree, double epsilon) const {
     recursive_intersects(*this, iterator, output, epsilon);
 
     return output;
-}
-
-
-std::vector<Vector> Ray::intersects_parallel(
-    const KDTree& tree,
-    int threads_count,
-    double epsilon
-) const {
-    auto root = tree.iterator();
-    if (!intersects(root.box())) {
-        return {};
-    }
-
-    ThreadPool pool(*this, tree.iterator(), threads_count);
-    return pool.wait_result();
 }
