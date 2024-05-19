@@ -24,10 +24,17 @@ protected:
 private:
     void drawMesh();
     void drawDescription();
+    void updateFrame();
 
     std::shared_ptr<TriangularMesh> mesh;
     std::unique_ptr<KDTree> tree;
-    std::optional<QPoint> click_point = std::nullopt;
+
+    std::optional<QPoint> click_point;
     std::vector<Vector> intersections;
+    QString intersection_time_spent;
+    bool always_find_intersections;
+
+    std::chrono::time_point<std::chrono::steady_clock> last_frame;
+
     Camera camera;
 };

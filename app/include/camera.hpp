@@ -9,8 +9,9 @@ public:
     Camera(Vector pos, int width, int height):
         pos(pos),
         left(0, 0, -1), up(0, 1, 0), front(1, 0, 0),
+        yaw(0.0), pitch(0.0),
         width(width), height(height),
-        fov(45.0), view_distance(100.0) {}
+        fov(45.0), view_distance(1000.0) {}
 
     inline void move_forward(double units) { pos += front * units; }
     inline void move_backward(double units) { pos -= front * units; }
