@@ -9,3 +9,9 @@ target_include_directories(
     PUBLIC $<BUILD_INTERFACE:${RAY_MESH_INTERSECTION_SOURCE_DIR}/include/>
     PRIVATE ${header_path}
 )
+target_link_libraries(rmilib PUBLIC atomic)
+
+if (USE_OMP)
+    find_package(OpenMP REQUIRED)
+    target_link_libraries(rmilib PUBLIC OpenMP::OpenMP_CXX)
+endif()

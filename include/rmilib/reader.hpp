@@ -68,6 +68,24 @@ enum DataFormat {
     Obj
 };
 
+inline DataFormat define_format(const std::string& filename) {
+    size_t index = filename.find_last_of('.');
+    if (index == std::string::npos) {
+        throw "Can't define file format";
+    }
+    std::string extension = filename.substr(index + 1);
+
+    if (extension == "ply") {
+        return Ply;
+    } else if (extension == "stl") {
+        return Stl;
+    } else if (extension == "obj") {
+        return Obj;
+    } else {
+        throw "Unsupported file format";
+    }
+}
+
 template<DataFormat>
 TriangularMesh read_triangular_mesh(std::istream& stream);
 

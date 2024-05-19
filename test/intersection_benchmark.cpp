@@ -2,41 +2,78 @@
 #include <catch2/catch.hpp>
 
 #include <iostream>
+#include <random>
+#include <sstream>
 #include <fstream>
 #include <time.h>
+
 #include "rmilib/kd_tree.hpp"
 #include "rmilib/reader.hpp"
 #include "rmilib/ray.hpp"
 #include "rmilib/triangle.hpp"
 
-double randd() {
-    double v1 = static_cast<double>(rand());
-    double v2 = static_cast<double>(rand());
-    return std::min(v1, v2) / (std::max(v1, v2) + std::numeric_limits<double>::min());
+
+class SampleGenerator {
+public:
+    SampleGenerator(int seed): seed(seed), engine(seed), dist(-1, 1) {
+    }
+
+    Ray next_ray() {
+        return Ray(
+            Vector(dist(engine), dist(engine), dist(engine)),
+            Vector(dist(engine), dist(engine), dist(engine))
+        );
+    }
+
+    void reset() {
+        engine.seed(seed);
+    }
+private:
+    int seed;
+    std::default_random_engine engine;
+    std::uniform_real_distribution<> dist;
+};
+
+
+template<typename... Args>
+std::string concat(const Args&... args) {
+    std::stringstream stream;
+    (stream << ... << args);
+    return stream.str();
 }
 
+
 TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
-    srand(time(NULL));
+    constexpr int threads_count = 4;
+    constexpr int depth = 16;
+    std::string filename = "../../data/urn.stl";
 
-    std::string filename = "../../data/bunny.ply";
+    SampleGenerator generator(time(NULL));
     auto mesh = std::make_shared<const TriangularMesh>(read_triangular_mesh(filename));
+    auto kdtree = KDTree::for_mesh(mesh, depth);
 
-    BENCHMARK_ADVANCED("Linear search " + std::to_string(mesh->size()))(auto meter) {
-        Ray ray(
-            Vector(0.0, 0.0, 0.0),
-            Vector(randd(), randd(), randd())
-        );
 
+    generator.reset();
+    BENCHMARK_ADVANCED(concat("Linear search ", mesh->size()))(auto meter) {
+        Ray ray = generator.next_ray();
         meter.measure([&ray, &mesh] { return ray.intersects(*mesh); });
     };
 
-    auto kdtree = KDTree::for_mesh(mesh);
-    BENCHMARK_ADVANCED("K-D Tree search " + std::to_string(mesh->size()))(auto meter) {
-        Ray ray(
-            Vector(0.0, 0.0, 0.0),
-            Vector(randd(), randd(), randd())
-        );
 
+    generator.reset();
+    BENCHMARK_ADVANCED(concat("Sync K-D Tree search ", mesh->size()))(auto meter) {
+        Ray ray = generator.next_ray();
         meter.measure([&ray, &kdtree] { return ray.intersects(kdtree); });
+    };
+
+
+    generator.reset();
+    BENCHMARK_ADVANCED(concat(
+        "Parallel (", threads_count, " threads) K-D Tree search ", mesh->size()
+    ))(auto meter) {
+        Ray ray = generator.next_ray();
+        meter.measure([&ray, &kdtree, threads_count] {
+            return ray.intersects_parallel(kdtree, threads_count);
+        });
     };
 }

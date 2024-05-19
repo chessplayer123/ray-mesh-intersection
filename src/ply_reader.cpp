@@ -120,7 +120,7 @@ std::vector<Triangle> parse_elements(
     std::vector<Triangle> triangles;
 
     for (int i = 0; i < header.vertexes_count; ++i) {
-        double x, y, z;
+        double x = 0, y = 0, z = 0;
 
         for (auto &[type, name] : header.vertex_properties) {
             double value = reader.read<double>();

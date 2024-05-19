@@ -46,6 +46,8 @@ private:
 class KDTree::Iterator {
     friend KDTree;
 public:
+    Iterator() noexcept = default;
+
     inline bool is_leaf() const {
         return !ptr->data.empty();
     }

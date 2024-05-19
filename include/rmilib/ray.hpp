@@ -15,7 +15,7 @@ public:
     Ray(Vector origin, Vector direction): origin(origin) {
         double length = direction.length();
         vector = direction / length;
-        inv_origin = Vector(
+        inv_vector = Vector(
             1.0 / vector.x(),
             1.0 / vector.y(),
             1.0 / vector.z()
@@ -38,8 +38,14 @@ public:
         const KDTree& tree,
         double epsilon = std::numeric_limits<double>::epsilon()
     ) const;
+
+    std::vector<Vector> intersects_parallel(
+        const KDTree& tree,
+        int threads_count,
+        double epsilon = std::numeric_limits<double>::epsilon()
+    ) const;
 private:
     Vector origin;
     Vector vector;
-    Vector inv_origin;
+    Vector inv_vector;
 };

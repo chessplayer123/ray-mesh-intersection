@@ -1,4 +1,13 @@
 #include "ray.hpp"
+#include "thread_pool.hpp"
+
+#include <queue>
+#include <array>
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <condition_variable>
+#include <optional>
 
 
 /*
@@ -35,6 +44,7 @@ std::optional<Vector> Ray::intersects(const Triangle& triangle, double epsilon) 
     return origin + vector * t;
 }
 
+
 /*
  * Simple iterative intersection search
  */
@@ -52,9 +62,10 @@ std::vector<Vector> Ray::intersects(const TriangularMesh& mesh, double epsilon) 
     return intersections;
 }
 
+
 bool Ray::intersects(const AABBox& box) const {
-    Vector t1 = (box.min - origin) * inv_origin;
-    Vector t2 = (box.max - origin) * inv_origin;
+    Vector t1 = (box.min - origin) * inv_vector;
+    Vector t2 = (box.max - origin) * inv_vector;
 
     double tmin = std::min(t1.x(), t2.x());
     double tmax = std::max(t1.x(), t2.x());
@@ -67,6 +78,7 @@ bool Ray::intersects(const AABBox& box) const {
 
     return tmax >= 0 && tmin <= tmax;
 }
+
 
 void recursive_intersects(
     const Ray& ray,
@@ -81,17 +93,17 @@ void recursive_intersects(
                 output.push_back(intersection.value());
             }
         }
-        return;
-    }
+    } else {
+        if (auto left = iter.left(); ray.intersects(left.box())) {
+            recursive_intersects(ray, left, output, epsilon);
+        }
 
-    if (auto left = iter.left(); ray.intersects(left.box())) {
-        recursive_intersects(ray, left, output, epsilon);
-    }
-
-    if (auto right = iter.right(); ray.intersects(right.box())) {
-        recursive_intersects(ray, right, output, epsilon);
+        if (auto right = iter.right(); ray.intersects(right.box())) {
+            recursive_intersects(ray, right, output, epsilon);
+        }
     }
 }
+
 
 std::vector<Vector> Ray::intersects(const KDTree& tree, double epsilon) const {
     KDTree::Iterator iterator = tree.iterator();
@@ -100,6 +112,23 @@ std::vector<Vector> Ray::intersects(const KDTree& tree, double epsilon) const {
     }
 
     std::vector<Vector> output;
+
     recursive_intersects(*this, iterator, output, epsilon);
+
     return output;
+}
+
+
+std::vector<Vector> Ray::intersects_parallel(
+    const KDTree& tree,
+    int threads_count,
+    double epsilon
+) const {
+    auto root = tree.iterator();
+    if (!intersects(root.box())) {
+        return {};
+    }
+
+    ThreadPool pool(*this, tree.iterator(), threads_count);
+    return pool.wait_result();
 }
