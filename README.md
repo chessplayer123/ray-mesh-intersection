@@ -11,9 +11,14 @@
 
 
 ## Build
-### Linux
 ```
-cmake -S . -B build [-DBUILD_TESTS=on] [-DBUILD_QT_APP=on] [-DBUILD_WASM=on]
+cmake -S . -B build [-DBUILD_TESTS=on] [-DBUILD_QT_APP=on] [-DBUILD_WASM=on] [-DBACKEND=NONE|POOL|OPENMP]
+cd build
+make -j%
+```
+### WASM
+```
+emcmake cmake -S . -B build [-DBUILD_WASM=on]
 cd build
 make -j%
 ```
