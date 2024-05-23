@@ -6,9 +6,8 @@
 class Vector {
     friend std::ostream& operator<<(std::ostream& stream, const Vector& vec);
 public:
-
-    Vector(): m_x(0), m_y(0), m_z(0) {}
-    Vector(double x, double y, double z): m_x(x), m_y(y), m_z(z) {}
+    constexpr Vector(): m_x(0), m_y(0), m_z(0) {}
+    constexpr Vector(double x, double y, double z): m_x(x), m_y(y), m_z(z) {}
 
     Vector operator+(const Vector& rhs) const;
     void operator+=(const Vector& rhs);

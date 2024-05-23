@@ -1,11 +1,13 @@
+#include "mainwindow.hpp"
+
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QShortcut>
 #include <QFileDialog>
 #include <fstream>
 #include <string>
-#include <rmilib/reader.hpp>
-#include "mainwindow.hpp"
+
+#include "rmilib/reader.hpp"
 
 MainWindow::MainWindow(QWidget* parent): QMainWindow(parent) {
     meshViewer = std::make_unique<MeshViewer>(this);

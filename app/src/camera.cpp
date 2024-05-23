@@ -3,11 +3,6 @@
 #include <math.h>
 
 
-Ray Camera::eye_ray() const {
-    return Ray(pos, front);
-}
-
-
 void Camera::rotate(double yaw_degree, double pitch_degree) {
     double yaw_rad = yaw_degree * M_PI / 180.0;
     double pitch_rad = pitch_degree * M_PI / 180.0;

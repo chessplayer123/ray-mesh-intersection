@@ -3,9 +3,8 @@
 #include <optional>
 #include <QOpenGLWidget>
 #include <QMouseEvent>
-#include "camera.hpp"
-#include "rmilib/triangular_mesh.hpp"
 #include "rmilib/kd_tree.hpp"
+#include "camera.hpp"
 
 class MeshViewer: public QOpenGLWidget {
 public:
@@ -26,8 +25,8 @@ private:
     void drawDescription();
     void updateFrame();
 
-    std::shared_ptr<TriangularMesh> mesh;
-    std::unique_ptr<KDTree> tree;
+    std::unique_ptr<TriangularMesh> mesh;
+    std::unique_ptr<KDTree<TriangularMesh>> tree;
 
     std::optional<QPoint> click_point;
     std::vector<Vector> intersections;

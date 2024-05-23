@@ -7,11 +7,24 @@ target_compile_definitions(CATCH_STATIC PRIVATE
 
 file(GLOB TEST_SOURCES *_test.cpp *_benchmark.cpp)
 
+set(LIBS CATCH_STATIC rmilib)
+set(DEFS "")
+if (INCLUDE_OMP)
+    list(APPEND LIBS OpenMP::OpenMP_CXX)
+    list(APPEND DEFS RMI_INCLUDE_OMP)
+endif()
+
+if (INCLUDE_POOL)
+    list(APPEND LIBS atomic)
+    list(APPEND DEFS RMI_INCLUDE_POOL)
+endif()
+
 foreach(TEST_FILE ${TEST_SOURCES})
     get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
     add_executable(${TEST_NAME} ${TEST_FILE})
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
-    target_link_libraries(${TEST_NAME} PRIVATE CATCH_STATIC rmilib)
+    target_link_libraries(${TEST_NAME} PRIVATE ${LIBS})
+    target_compile_definitions(${TEST_NAME} PRIVATE ${DEFS})
 
     if (${TEST_NAME} MATCHES "benchmark$")
         set_tests_properties(${TEST_NAME} PROPERTIES LABELS "benchmark")

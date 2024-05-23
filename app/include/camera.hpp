@@ -1,8 +1,6 @@
 #pragma once
 
-#include "rmilib/vector.hpp"
 #include "rmilib/ray.hpp"
-
 
 class Camera {
 public:
@@ -29,7 +27,10 @@ public:
     void rotate(double yaw_degree, double pitch_degree);
 
     void setup() const;
-    Ray eye_ray() const;
+
+    Ray eye_ray() const {
+        return Ray(pos, front);
+    }
 private:
     Vector pos;
 

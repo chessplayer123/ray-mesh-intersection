@@ -7,11 +7,10 @@
 #include <fstream>
 #include <time.h>
 
+#include "rmilib/ray.hpp"
+#include "rmilib/parallel_algos.hpp"
 #include "rmilib/kd_tree.hpp"
 #include "rmilib/reader.hpp"
-#include "rmilib/ray.hpp"
-#include "rmilib/triangle.hpp"
-#include "rmilib/parallel_algos.hpp"
 
 
 class SampleGenerator {
@@ -45,36 +44,50 @@ std::string concat(const Args&... args) {
 
 
 TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
-    constexpr int threads_count = 4;
+    constexpr int threads_count = 2;
     constexpr int depth = 16;
     std::string filename = "../../data/urn.stl";
 
-    SampleGenerator generator(time(NULL));
-    auto mesh = std::make_shared<const TriangularMesh>(read_triangular_mesh(filename));
-    auto kdtree = KDTree::for_mesh(mesh, depth);
+    SampleGenerator generator(354238);
+    TriangularMesh mesh = read_triangular_mesh(filename);
+    auto kdtree = KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end(), depth);
 
 
     generator.reset();
-    BENCHMARK_ADVANCED(concat("Linear search ", mesh->size()))(auto meter) {
+    BENCHMARK_ADVANCED(concat("Linear search ", mesh.size()))(auto meter) {
         Ray ray = generator.next_ray();
-        meter.measure([&ray, &mesh] { return ray.intersects(*mesh); });
+        meter.measure([&ray, &mesh] { return ray.intersects(mesh); });
     };
 
 
     generator.reset();
-    BENCHMARK_ADVANCED(concat("Sync K-D Tree search ", mesh->size()))(auto meter) {
+    BENCHMARK_ADVANCED(concat("Sync K-D Tree search ", mesh.size()))(auto meter) {
         Ray ray = generator.next_ray();
         meter.measure([&ray, &kdtree] { return ray.intersects(kdtree); });
     };
 
 
+#ifdef RMI_INCLUDE_OMP
     generator.reset();
     BENCHMARK_ADVANCED(concat(
-        "Parallel (", threads_count, " threads) K-D Tree search ", mesh->size()
+        "Parallel (", threads_count, " threads) K-D Tree search ", mesh.size()
     ))(auto meter) {
         Ray ray = generator.next_ray();
         meter.measure([&ray, &kdtree, threads_count] {
-            return parallel_intersects(ray, kdtree, threads_count);
+            return parallel_intersects_omp(ray, kdtree, threads_count);
         });
     };
+#endif
+
+#ifdef RMI_INCLUDE_POOL
+    generator.reset();
+    BENCHMARK_ADVANCED(concat(
+        "Parallel (", threads_count, " threads) K-D Tree search ", mesh.size()
+    ))(auto meter) {
+        Ray ray = generator.next_ray();
+        meter.measure([&ray, &kdtree, threads_count] {
+            return parallel_intersects_pool(ray, kdtree, threads_count);
+        });
+    };
+#endif
 }

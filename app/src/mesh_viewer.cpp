@@ -1,5 +1,4 @@
 #include "mesh_viewer.hpp"
-#include "rmilib/ray.hpp"
 #include "rmilib/parallel_algos.hpp"
 
 #include <QDebug>
@@ -36,11 +35,11 @@ void MeshViewer::drawMesh() {
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     glColor3f(1.0, 1.0, 1.0);
-    for (const Triangle& triangle : *mesh) {
+    for (const auto& triangle : *mesh) {
         glBegin(GL_TRIANGLES);
-            glVertex3d(triangle.v1().x(), triangle.v1().y(), triangle.v1().z());
-            glVertex3d(triangle.v2().x(), triangle.v2().y(), triangle.v2().z());
-            glVertex3d(triangle.v3().x(), triangle.v3().y(), triangle.v3().z());
+            glVertex3d(triangle.v<0>().x(), triangle.v<0>().y(), triangle.v<0>().z());
+            glVertex3d(triangle.v<1>().x(), triangle.v<1>().y(), triangle.v<1>().z());
+            glVertex3d(triangle.v<2>().x(), triangle.v<2>().y(), triangle.v<2>().z());
         glEnd();
     }
 
@@ -141,17 +140,28 @@ void MeshViewer::updateFrame() {
 
 void MeshViewer::findIntersections() {
     auto start = steady_clock::now();
-    intersections = parallel_intersects(camera.eye_ray(), *tree, 4);
-    auto parallel_time_delta = duration_cast<microseconds>(steady_clock::now() - start).count();
-
-    start = steady_clock::now();
     intersections = camera.eye_ray().intersects(*tree);
     auto sync_time_delta = duration_cast<microseconds>(steady_clock::now() - start).count();
 
-    intersection_time_spent = QString("parallel: %0 us, sync: %1 us, x %2")
-        .arg(parallel_time_delta)
-        .arg(sync_time_delta)
-        .arg(static_cast<double>(sync_time_delta)/static_cast<double>(parallel_time_delta));
+    intersection_time_spent = QString("sync: %0 us").arg(sync_time_delta);
+
+    #ifdef RMI_INCLUDE_OMP
+        start = steady_clock::now();
+        intersections = parallel_intersects_omp(camera.eye_ray(), *tree, 2);
+        auto omp_time_delta = duration_cast<microseconds>(steady_clock::now() - start).count();
+        intersection_time_spent += QString("\n    omp: %0 us (x %1)")
+            .arg(omp_time_delta)
+            .arg(static_cast<double>(sync_time_delta)/static_cast<double>(omp_time_delta));
+    #endif
+
+    #ifdef RMI_INCLUDE_POOL
+        start = steady_clock::now();
+        intersections = parallel_intersects_pool(camera.eye_ray(), *tree, 2);
+        auto pool_time_delta = duration_cast<microseconds>(steady_clock::now() - start).count();
+        intersection_time_spent += QString("\n    pool: %0 us (x %1)")
+            .arg(pool_time_delta)
+            .arg(static_cast<double>(sync_time_delta)/static_cast<double>(pool_time_delta));
+    #endif
 }
 
 void MeshViewer::mousePressEvent(QMouseEvent* event) {
@@ -169,8 +179,10 @@ void MeshViewer::mouseMoveEvent(QMouseEvent* event) {
     click_point = event->pos();
 }
 
-void MeshViewer::setMesh(TriangularMesh&& mesh) {
-    this->mesh = std::make_shared<TriangularMesh>(mesh);
-    tree = std::make_unique<KDTree>(KDTree::for_mesh(this->mesh));
+void MeshViewer::setMesh(TriangularMesh&& new_mesh) {
+    mesh = std::make_unique<TriangularMesh>(new_mesh);
+    tree = std::make_unique<KDTree<TriangularMesh>>(
+        KDTree<TriangularMesh>::for_mesh(mesh->begin(), mesh->end())
+    );
     updateFrame();
 }

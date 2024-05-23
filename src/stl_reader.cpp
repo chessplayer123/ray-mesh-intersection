@@ -15,9 +15,11 @@ endfacet
 endsolid name
  */
 TriangularMesh parse_ascii_mesh(MeshReader& reader) {
-    std::vector<Triangle> triangles;
+    std::vector<double> coords;
+    std::vector<size_t> indices;
+    std::vector<double> normals;
 
-    for(;;) {
+    for(size_t counter = 0;; ++counter) {
         std::string token = reader.read<std::string>();
         if (token == "endsolid") {
             break;
@@ -26,29 +28,23 @@ TriangularMesh parse_ascii_mesh(MeshReader& reader) {
         }
 
         reader.expect_word("normal");
-        Vector normal(
-            reader.read<double>(),
-            reader.read<double>(),
-            reader.read<double>()
-        );
+        normals.push_back(reader.read<double>());
+        normals.push_back(reader.read<double>());
+        normals.push_back(reader.read<double>());
 
         reader.expect_line("outer loop");
-        std::array<Vector, 3> vertexes;
         for (int i = 0; i < 3; ++i) {
             reader.expect_word("vertex");
-            vertexes[i] = Vector(
-                reader.read<double>(),
-                reader.read<double>(),
-                reader.read<double>()
-            );
+            coords.push_back(reader.read<double>());
+            coords.push_back(reader.read<double>());
+            coords.push_back(reader.read<double>());
+            indices.push_back(counter + i);
         }
         reader.expect_word("endloop");
         reader.expect_word("endfacet");
-
-        triangles.emplace_back(vertexes[0], vertexes[1], vertexes[2], normal);
     }
 
-    return TriangularMesh(std::move(triangles));
+    return TriangularMesh(std::move(coords), std::move(indices));
 }
 
 
@@ -65,23 +61,24 @@ end
  */
 TriangularMesh parse_binary_mesh(MeshReader& reader) {
     auto triangles_count = reader.read_as_bytes<uint32_t>();
-    std::vector<Triangle> triangles;
-    triangles.reserve(triangles_count);
+    std::vector<double> coords;
+    std::vector<size_t> indices;
+    std::vector<double> normals;
 
     for (uint32_t i = 0; i < triangles_count; ++i) {
-        std::array<Vector, 4> vertexes;
-        for (int j = 0; j < 4; ++j) {
-            vertexes[j] = Vector(
-                static_cast<double>(reader.read_as_bytes<float>()),
-                static_cast<double>(reader.read_as_bytes<float>()),
-                static_cast<double>(reader.read_as_bytes<float>())
-            );
+        normals.push_back(static_cast<double>(reader.read_as_bytes<float>()));
+        normals.push_back(static_cast<double>(reader.read_as_bytes<float>()));
+        normals.push_back(static_cast<double>(reader.read_as_bytes<float>()));
+        for (int j = 0; j < 3; ++j) {
+            coords.push_back(static_cast<double>(reader.read_as_bytes<float>()));
+            coords.push_back(static_cast<double>(reader.read_as_bytes<float>()));
+            coords.push_back(static_cast<double>(reader.read_as_bytes<float>()));
+            indices.push_back(3 * i + j);
         }
-        triangles.emplace_back(vertexes[1], vertexes[2], vertexes[3], vertexes[0]);
         reader.skip_bytes(2);
     }
 
-    return TriangularMesh(std::move(triangles));
+    return TriangularMesh(std::move(coords), std::move(indices));
 }
 
 

@@ -1,4 +1,4 @@
-project(main-app)
+project(qt-app)
 
 # OpenGL
 find_package(OpenGL REQUIRED)
@@ -17,3 +17,13 @@ target_link_libraries(qt_app PRIVATE
     Qt5::OpenGL
     ${OPENGL_LIBRARIES}
 )
+
+if (INCLUDE_OMP)
+    target_link_libraries(qt_app PRIVATE OpenMP::OpenMP_CXX)
+    target_compile_definitions(qt_app PRIVATE RMI_INCLUDE_OMP)
+endif()
+
+if (INCLUDE_POOL)
+    target_link_libraries(qt_app PRIVATE atomic)
+    target_compile_definitions(qt_app PRIVATE RMI_INCLUDE_POOL)
+endif()

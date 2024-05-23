@@ -1,9 +1,8 @@
 #include "reader.hpp"
+
 #include <fstream>
 #include <unordered_map>
 #include <vector>
-#include <vector.hpp>
-#include <triangle.hpp>
 
 namespace ply {
 
@@ -112,12 +111,12 @@ ply::Header parse_header(MeshReader& reader) {
 }
 
 
-std::vector<Triangle> parse_elements(
+TriangularMesh parse_elements(
     MeshReader& reader,
     const ply::Header& header
 ) {
-    std::vector<Vector> points;
-    std::vector<Triangle> triangles;
+    std::vector<double> points;
+    std::vector<size_t> indices;
 
     for (int i = 0; i < header.vertexes_count; ++i) {
         double x = 0, y = 0, z = 0;
@@ -128,7 +127,9 @@ std::vector<Triangle> parse_elements(
             else if (name == "y") y = value;
             else if (name == "z") z = value;
         }
-        points.emplace_back(x, y, z);
+        points.push_back(x);
+        points.push_back(y);
+        points.push_back(z);
     }
 
     for (int i = 0; i < header.faces_count; ++i) {
@@ -141,15 +142,13 @@ std::vector<Triangle> parse_elements(
             if (count != 3) {
                 throw "Supports only triangular meshes.";
             }
-            triangles.emplace_back(
-                points[reader.read<int>()],
-                points[reader.read<int>()],
-                points[reader.read<int>()]
-            );
+            indices.push_back(reader.read<int>());
+            indices.push_back(reader.read<int>());
+            indices.push_back(reader.read<int>());
         }
     }
 
-    return triangles;
+    return TriangularMesh(std::move(points), std::move(indices));
 }
 
 
@@ -158,7 +157,5 @@ TriangularMesh read_triangular_mesh<DataFormat::Ply>(std::istream& stream) {
     MeshReader reader(stream);
 
     const ply::Header header = parse_header(reader);
-    std::vector<Triangle> triangles = parse_elements(reader, header);
-
-    return TriangularMesh(std::move(triangles));
+    return parse_elements(reader, header);
 }

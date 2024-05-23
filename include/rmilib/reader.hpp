@@ -2,7 +2,7 @@
 
 #include <string>
 #include <memory>
-#include "triangular_mesh.hpp"
+#include "mesh.hpp"
 
 class MeshReader {
 public:
@@ -62,7 +62,7 @@ private:
     std::istream& stream;
 };
 
-enum DataFormat {
+enum class DataFormat {
     Ply,
     Stl,
     Obj
@@ -76,11 +76,11 @@ inline DataFormat define_format(const std::string& filename) {
     std::string extension = filename.substr(index + 1);
 
     if (extension == "ply") {
-        return Ply;
+        return DataFormat::Ply;
     } else if (extension == "stl") {
-        return Stl;
+        return DataFormat::Stl;
     } else if (extension == "obj") {
-        return Obj;
+        return DataFormat::Obj;
     } else {
         throw "Unsupported file format";
     }

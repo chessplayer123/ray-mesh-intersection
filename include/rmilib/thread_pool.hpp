@@ -7,9 +7,12 @@
 #include "ray.hpp"
 
 
+template<typename T>
 class ThreadPool {
 public:
-    ThreadPool(const Ray& ray, KDTree::Iterator root, int threads_count):
+    typedef typename KDTree<T>::iterator Iterator;
+
+    ThreadPool(const Ray& ray, Iterator root, int threads_count):
         threads(threads_count), queues(threads_count),  results(threads_count),
         counter(0), threads_count(threads_count), ray(ray)
     {
@@ -29,11 +32,11 @@ public:
         return result;
     }
 private:
-    void distribute_load(KDTree::Iterator root) {
+    void distribute_load(Iterator root) {
         queues[0].push(std::move(root));
     }
 
-    std::optional<KDTree::Iterator> pop_node(int thread_id) {
+    std::optional<Iterator> pop_node(int thread_id) {
         auto node = queues[thread_id].pop();
         if (node) {
             return node;
@@ -53,14 +56,15 @@ private:
     }
 
     void worker_thread(int thread_id) {
-        std::optional<KDTree::Iterator> next = pop_node(thread_id);
+        std::optional<Iterator> next = pop_node(thread_id);
 
         while(next) {
-            KDTree::Iterator cur = next.value();
+            Iterator cur = next.value();
 
             if (cur.is_leaf()) {
-                for (const Triangle& triangle : cur.triangles()) {
-                    auto intersection = ray.intersects(triangle);
+                auto [begin, end] = cur.triangles();
+                for (auto& cur = begin; cur != end; ++cur) {
+                    auto intersection = ray.intersects<T>(*cur);
                     if (intersection.has_value()) {
                         results[thread_id].push_back(intersection.value());
                     }
@@ -87,7 +91,7 @@ private:
     }
 
     std::vector<std::thread> threads;
-    std::vector<WorkStealingQueue<KDTree::Iterator>> queues;
+    std::vector<WorkStealingQueue<Iterator>> queues;
     std::vector<std::vector<Vector>> results;
 
     std::atomic_int counter;

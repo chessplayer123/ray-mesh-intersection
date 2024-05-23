@@ -41,8 +41,8 @@ template<>
 TriangularMesh read_triangular_mesh<DataFormat::Obj>(std::istream& stream) {
     MeshReader reader(stream);
 
-    std::vector<Vector> vertexes;
-    std::vector<Triangle> triangles;
+    std::vector<double> vertexes;
+    std::vector<size_t> indices;
 
     bool has_data = true;
     while (has_data) {
@@ -52,14 +52,14 @@ TriangularMesh read_triangular_mesh<DataFormat::Obj>(std::istream& stream) {
                 double x = reader.read<double>();
                 double y = reader.read<double>();
                 double z = reader.read<double>();
-                vertexes.emplace_back(x, y, z);
+                vertexes.push_back(x);
+                vertexes.push_back(y);
+                vertexes.push_back(z);
             } break;
             case obj::Face:
-                triangles.emplace_back(
-                    vertexes[reader.read<int>() - 1],
-                    vertexes[reader.read<int>() - 1],
-                    vertexes[reader.read<int>() - 1]
-                );
+                indices.push_back(reader.read<size_t>() - 1);
+                indices.push_back(reader.read<size_t>() - 1);
+                indices.push_back(reader.read<size_t>() - 1);
                 break;
             case obj::Comment:
             case obj::Group:
@@ -74,6 +74,6 @@ TriangularMesh read_triangular_mesh<DataFormat::Obj>(std::istream& stream) {
         }
     }
 
-    return TriangularMesh(std::move(triangles));
+    return TriangularMesh(std::move(vertexes), std::move(indices));
 }
 

@@ -17,6 +17,11 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 
+if (INCLUDE_OMP)
+    find_package(OpenMP REQUIRED)
+endif()
+
+
 include_directories(external/)
 add_subdirectory(src/)
 if (BUILD_TESTS)
