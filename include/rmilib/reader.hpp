@@ -2,7 +2,7 @@
 
 #include <string>
 #include <memory>
-#include "mesh.hpp"
+#include "raw_mesh.hpp"
 
 class MeshReader {
 public:
@@ -37,7 +37,7 @@ public:
     }
 
     template <typename T>
-    inline T read_as_bytes() {
+    T read_as_bytes() {
         auto buffer = std::shared_ptr<char[]>(new char[sizeof(T)]);
         stream.read(buffer.get(), sizeof(T));
         auto value = std::shared_ptr<T>(buffer, reinterpret_cast<T*>(buffer.get()));
@@ -53,7 +53,7 @@ public:
     }
 
     template <typename T>
-    inline T read() {
+    T read() {
         T data;
         stream >> data >> std::ws;
         return data;
@@ -86,8 +86,15 @@ inline DataFormat define_format(const std::string& filename) {
     }
 }
 
-template<DataFormat>
-TriangularMesh read_triangular_mesh(std::istream& stream);
+template<typename float_t, typename index_t>
+RawMesh<float_t, index_t> read_raw_triangular_mesh_obj(std::istream& stream);
 
-TriangularMesh read_triangular_mesh(const std::string& path);
+template<typename float_t, typename index_t>
+RawMesh<float_t, index_t> read_raw_triangular_mesh_ply(std::istream& stream);
+
+template<typename float_t, typename index_t>
+RawMesh<float_t, index_t> read_raw_triangular_mesh_stl(std::istream& stream);
+
+template<typename float_t, typename index_t>
+RawMesh<float_t, index_t> read_raw_triangular_mesh(const std::string& path);
 

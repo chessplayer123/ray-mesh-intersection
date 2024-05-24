@@ -10,48 +10,50 @@
 #include "mesh.hpp"
 
 
+template<typename float_t>
 class Ray {
 public:
-    Ray(Vector origin, Vector direction): origin(origin) {
-        double length = direction.length();
-        vector = direction / length;
-        inv_vector = Vector(
+    Ray(Vector3<float_t> origin, Vector3<float_t> direction):
+        origin(origin),
+        vector(direction.ort())
+    {
+        inv_vector = Vector3<float_t>(
             1.0 / vector.x(),
             1.0 / vector.y(),
             1.0 / vector.z()
         );
     }
 
-    bool intersects(const AABBox& box) const;
+    bool intersects(const AABBox<float_t>& box) const;
 
-    template<typename T>
-    std::optional<Vector> intersects(
-        const typename Mesh<T>::Element& triangle,
-        double epsilon = std::numeric_limits<double>::epsilon()
+    template<typename mesh_t>
+    std::optional<Vector3<float_t>> intersects(
+        const typename mesh_t::Element& triangle,
+        float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
 
-    template<typename T>
-    std::vector<Vector> intersects(
-        Mesh<T>& mesh,
-        double epsilon = std::numeric_limits<double>::epsilon()
+    template<typename mesh_t, typename index_t>
+    std::vector<Vector3<float_t>> intersects(
+        Mesh<mesh_t, float_t, index_t>& mesh,
+        float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
 
-    template<typename T>
-    std::vector<Vector> intersects(
-        const KDTree<T>& tree,
-        double epsilon = std::numeric_limits<double>::epsilon()
+    template<typename mesh_t>
+    std::vector<Vector3<float_t>> intersects(
+        const KDTree<mesh_t>& tree,
+        float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
 private:
-    template<typename T>
+    template<typename mesh_t>
     void recursive_intersects(
-        const typename KDTree<T>::iterator iter,
-        std::vector<Vector>& output,
-        double epsilon = std::numeric_limits<double>::epsilon()
+        const typename KDTree<mesh_t>::iterator iter,
+        std::vector<Vector3<float_t>>& output,
+        float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
 
-    Vector origin;
-    Vector vector;
-    Vector inv_vector;
+    Vector3<float_t> origin;
+    Vector3<float_t> vector;
+    Vector3<float_t> inv_vector;
 };
 
 
@@ -59,38 +61,39 @@ private:
  * Read for details:
  * https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
  */
-template<typename T>
-std::optional<Vector> Ray::intersects(
-    const typename Mesh<T>::Element& triangle,
-    double epsilon
+template<typename float_t>
+template<typename mesh_t>
+std::optional<Vector3<float_t>> Ray<float_t>::intersects(
+    const typename mesh_t::Element& triangle,
+    float_t epsilon
 ) const {
-    const Vector v1 = triangle.template v<0>();
-    const Vector v2 = triangle.template v<1>();
-    const Vector v3 = triangle.template v<2>();
+    const Vector3 v1 = triangle.template v<0>();
+    const Vector3 v2 = triangle.template v<1>();
+    const Vector3 v3 = triangle.template v<2>();
 
-    Vector edge1 = v2 - v1;
-    Vector edge2 = v3 - v1;
-    Vector ray_cross_e2 = vector.cross(edge2);
+    Vector3 edge1 = v2 - v1;
+    Vector3 edge2 = v3 - v1;
+    Vector3 ray_cross_e2 = vector.cross(edge2);
 
-    double det = edge1.dot(ray_cross_e2);
+    float_t det = edge1.dot(ray_cross_e2);
     if (-epsilon <= det && det <= epsilon) {
         return std::nullopt;
     }
-    double inv_det = 1.0 / det;
+    float_t inv_det = 1.0 / det;
 
-    Vector s = origin - v1;
-    double u = inv_det * s.dot(ray_cross_e2);
+    Vector3 s = origin - v1;
+    float_t u = inv_det * s.dot(ray_cross_e2);
     if (u < 0.0 || u > 1.0) {
         return std::nullopt;
     }
 
-    Vector s_cross_e1 = s.cross(edge1);
-    double v = inv_det * vector.dot(s_cross_e1);
+    Vector3 s_cross_e1 = s.cross(edge1);
+    float_t v = inv_det * vector.dot(s_cross_e1);
     if (v < 0.0 || u + v > 1.0) {
         return std::nullopt;
     }
 
-    double t = inv_det * edge2.dot(s_cross_e1);
+    float_t t = inv_det * edge2.dot(s_cross_e1);
     if (t <= epsilon) {
         return std::nullopt;
     }
@@ -98,44 +101,46 @@ std::optional<Vector> Ray::intersects(
 }
 
 
-template<typename T>
-void Ray::recursive_intersects(
-    const typename KDTree<T>::iterator iter,
-    std::vector<Vector>& output,
-    double epsilon
+template<typename float_t>
+template<typename mesh_t>
+void Ray<float_t>::recursive_intersects(
+    const typename KDTree<mesh_t>::iterator iter,
+    std::vector<Vector3<float_t>>& output,
+    float_t epsilon
 ) const {
     if (iter.is_leaf()) {
         auto [begin, end] = iter.triangles();
         for (auto cur = begin; cur != end; ++cur) {
-            auto intersection = intersects<T>(*cur, epsilon);
+            auto intersection = intersects<mesh_t>(*cur, epsilon);
             if (intersection.has_value()) {
                 output.push_back(intersection.value());
             }
         }
     } else {
         if (auto left = iter.left(); intersects(left.box())) {
-            recursive_intersects<T>(left, output, epsilon);
+            recursive_intersects<mesh_t>(left, output, epsilon);
         }
 
         if (auto right = iter.right(); intersects(right.box())) {
-            recursive_intersects<T>(right, output, epsilon);
+            recursive_intersects<mesh_t>(right, output, epsilon);
         }
     }
 }
 
 
-template<typename T>
-std::vector<Vector> Ray::intersects(
-    const KDTree<T>& tree,
-    double epsilon
+template<typename float_t>
+template<typename mesh_t>
+std::vector<Vector3<float_t>> Ray<float_t>::intersects(
+    const KDTree<mesh_t>& tree,
+    float_t epsilon
 ) const {
     auto iter = tree.top();
     if (!intersects(iter.box())) {
         return {};
     }
 
-    std::vector<Vector> output;
-    recursive_intersects<T>(iter, output, epsilon);
+    std::vector<Vector3<float_t>> output;
+    recursive_intersects<mesh_t>(iter, output, epsilon);
     return output;
 }
 
@@ -143,12 +148,16 @@ std::vector<Vector> Ray::intersects(
 /*
  * Simple iterative intersection search
  */
-template<typename T>
-std::vector<Vector> Ray::intersects(Mesh<T>& mesh, double epsilon) const {
-    std::vector<Vector> intersections;
+template<typename float_t>
+template<typename mesh_t, typename index_t>
+std::vector<Vector3<float_t>> Ray<float_t>::intersects(
+    Mesh<mesh_t, float_t, index_t>& mesh,
+    float_t epsilon
+) const {
+    std::vector<Vector3<float_t>> intersections;
 
     for (const auto& cur : mesh) {
-        auto intersection = intersects<T>(cur, epsilon);
+        auto intersection = intersects<mesh_t>(cur, epsilon);
 
         if (intersection.has_value()) {
             intersections.push_back(intersection.value());
@@ -156,4 +165,21 @@ std::vector<Vector> Ray::intersects(Mesh<T>& mesh, double epsilon) const {
     }
 
     return intersections;
+}
+
+template<typename float_t>
+inline bool Ray<float_t>::intersects(const AABBox<float_t>& box) const {
+    Vector3 t1 = (box.min - origin) * inv_vector;
+    Vector3 t2 = (box.max - origin) * inv_vector;
+
+    float_t tmin = std::min(t1.x(), t2.x());
+    float_t tmax = std::max(t1.x(), t2.x());
+
+    tmin = std::max(tmin, std::min(t1.y(), t2.y()));
+    tmax = std::min(tmax, std::max(t1.y(), t2.y()));
+
+    tmin = std::max(tmin, std::min(t1.z(), t2.z()));
+    tmax = std::min(tmax, std::max(t1.z(), t2.z()));
+
+    return tmax >= 0 && tmin <= tmax;
 }

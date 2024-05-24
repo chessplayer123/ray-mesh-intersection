@@ -18,10 +18,10 @@ public:
     SampleGenerator(int seed): seed(seed), engine(seed), dist(-1, 1) {
     }
 
-    Ray next_ray() {
+    Ray<double> next_ray() {
         return Ray(
-            Vector(dist(engine), dist(engine), dist(engine)),
-            Vector(dist(engine), dist(engine), dist(engine))
+            Vector3d(dist(engine), dist(engine), dist(engine)),
+            Vector3d(dist(engine), dist(engine), dist(engine))
         );
     }
 
@@ -49,7 +49,7 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
     std::string filename = "../../data/urn.stl";
 
     SampleGenerator generator(354238);
-    TriangularMesh mesh = read_triangular_mesh(filename);
+    TriangularMesh mesh = read_raw_triangular_mesh<double, size_t>(filename);
     auto kdtree = KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end(), depth);
 
 
@@ -70,7 +70,7 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
 #ifdef RMI_INCLUDE_OMP
     generator.reset();
     BENCHMARK_ADVANCED(concat(
-        "Parallel (", threads_count, " threads) K-D Tree search ", mesh.size()
+        "OMP (", threads_count, " threads) K-D Tree search ", mesh.size()
     ))(auto meter) {
         Ray ray = generator.next_ray();
         meter.measure([&ray, &kdtree, threads_count] {
@@ -82,7 +82,7 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
 #ifdef RMI_INCLUDE_POOL
     generator.reset();
     BENCHMARK_ADVANCED(concat(
-        "Parallel (", threads_count, " threads) K-D Tree search ", mesh.size()
+        "Thread pool (", threads_count, " threads) K-D Tree search ", mesh.size()
     ))(auto meter) {
         Ray ray = generator.next_ray();
         meter.measure([&ray, &kdtree, threads_count] {

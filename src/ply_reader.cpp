@@ -111,18 +111,19 @@ ply::Header parse_header(MeshReader& reader) {
 }
 
 
-TriangularMesh parse_elements(
+template<typename float_t, typename index_t>
+RawMesh<float_t, index_t> parse_elements(
     MeshReader& reader,
     const ply::Header& header
 ) {
-    std::vector<double> points;
-    std::vector<size_t> indices;
+    std::vector<float_t> points;
+    std::vector<index_t> indices;
 
     for (int i = 0; i < header.vertexes_count; ++i) {
-        double x = 0, y = 0, z = 0;
+        float_t x = 0, y = 0, z = 0;
 
         for (auto &[type, name] : header.vertex_properties) {
-            double value = reader.read<double>();
+            float_t value = reader.read<float_t>();
             if      (name == "x") x = value;
             else if (name == "y") y = value;
             else if (name == "z") z = value;
@@ -142,20 +143,23 @@ TriangularMesh parse_elements(
             if (count != 3) {
                 throw "Supports only triangular meshes.";
             }
-            indices.push_back(reader.read<int>());
-            indices.push_back(reader.read<int>());
-            indices.push_back(reader.read<int>());
+            indices.push_back(reader.read<index_t>());
+            indices.push_back(reader.read<index_t>());
+            indices.push_back(reader.read<index_t>());
         }
     }
 
-    return TriangularMesh(std::move(points), std::move(indices));
+    return RawMesh(std::move(points), std::move(indices));
 }
 
 
-template<>
-TriangularMesh read_triangular_mesh<DataFormat::Ply>(std::istream& stream) {
+template<typename float_t, typename index_t>
+RawMesh<float_t, index_t> read_raw_triangular_mesh_ply(std::istream& stream) {
     MeshReader reader(stream);
 
     const ply::Header header = parse_header(reader);
-    return parse_elements(reader, header);
+    return parse_elements<float_t, index_t>(reader, header);
 }
+
+template TriangularMesh read_raw_triangular_mesh_ply<double, size_t>(std::istream& stream);
+template WebGLMesh read_raw_triangular_mesh_ply<float, unsigned short>(std::istream& stream);

@@ -4,8 +4,8 @@
 #    include "thread_pool.hpp"
 
 template<typename T>
-std::vector<Vector> parallel_intersects_pool(
-    const Ray& ray,
+std::vector<Vector3<typename T::float_t>> parallel_intersects_pool(
+    const Ray<typename T::float_t>& ray,
     const KDTree<T>& tree,
     int threads_count,
     double epsilon = std::numeric_limits<double>::epsilon()
@@ -31,15 +31,15 @@ std::vector<Vector> parallel_intersects_pool(
 
 template<typename T>
 void parallel_recursive_intersects(
-    const Ray& ray,
+    const Ray<typename T::float_t>& ray,
     typename KDTree<T>::iterator iter,
-    std::vector<Vector>& output,
+    std::vector<Vector3<typename T::float_t>>& output,
     double epsilon
 ) {
     if (iter.is_leaf()) {
         auto [begin, end] = iter.triangles();
         for (auto cur = begin; cur != end; ++cur) {
-            auto intersection = ray.intersects<T>(*cur, epsilon);
+            auto intersection = ray.template intersects<T>(*cur, epsilon);
             if (intersection.has_value()) {
                 output.push_back(intersection.value());
             }
@@ -66,8 +66,8 @@ void parallel_recursive_intersects(
 
 
 template<typename T>
-std::vector<Vector> parallel_intersects_omp(
-    const Ray& ray,
+std::vector<Vector3<typename T::float_t>> parallel_intersects_omp(
+    const Ray<typename T::float_t>& ray,
     const KDTree<T>& tree,
     int threads_count,
     double epsilon = std::numeric_limits<double>::epsilon()
@@ -77,7 +77,7 @@ std::vector<Vector> parallel_intersects_omp(
         return {};
     }
 
-    std::vector<Vector> output;
+    std::vector<Vector3<typename T::float_t>> output;
 
     #pragma omp parallel shared(output) num_threads(threads_count)
     #pragma omp single

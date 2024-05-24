@@ -4,21 +4,24 @@
 #include <algorithm>
 #include <cstddef>
 
-#include "mesh.hpp"
+#include "aabbox.hpp"
 
 
-template<typename It>
-AABBox get_bounding_box(It begin, It end) {
+template<typename T>
+AABBox<typename T::float_t> get_bounding_box(
+    typename T::iterator begin,
+    typename T::iterator end
+) {
     using std::min, std::max;
 
-    double min_x, min_y, min_z, max_x, max_y, max_z;
-    min_x = min_y = min_z = std::numeric_limits<double>::max();
-    max_x = max_y = max_z = std::numeric_limits<double>::min();
+    typename T::float_t min_x, min_y, min_z, max_x, max_y, max_z;
+    min_x = min_y = min_z = std::numeric_limits<float_t>::max();
+    max_x = max_y = max_z = std::numeric_limits<float_t>::min();
 
     for (auto cur = begin; cur != end; ++cur) {
-        const Vector& v1 = cur->template v<0>();
-        const Vector& v2 = cur->template v<1>();
-        const Vector& v3 = cur->template v<2>();
+        const Vector3 v1 = cur->template v<0>();
+        const Vector3 v2 = cur->template v<1>();
+        const Vector3 v3 = cur->template v<2>();
 
         min_x = min(min_x, min(v1.x(), min(v2.x(), v3.x())));
         max_x = max(max_x, max(v1.x(), max(v2.x(), v3.x())));
@@ -31,8 +34,8 @@ AABBox get_bounding_box(It begin, It end) {
     }
 
     return {
-        Vector(min_x, min_y, min_z),
-        Vector(max_x, max_y, max_z)
+        Vector3(min_x, min_y, min_z),
+        Vector3(max_x, max_y, max_z)
     };
 }
 
@@ -75,7 +78,7 @@ public:
         return !ptr->left && !ptr->right;
     }
 
-    inline const AABBox& box() const {
+    inline const AABBox<typename T::float_t>& box() const {
         return ptr->bounding_box;
     }
 
@@ -111,7 +114,7 @@ struct KDTree<T>::Node {
             return nullptr;
         } else if (length == 1 || depth >= max_depth) {
             return std::make_unique<Node>(
-                get_bounding_box(begin, end),
+                get_bounding_box<T>(begin, end),
                 begin, end,
                 nullptr, nullptr
             );
@@ -134,7 +137,7 @@ struct KDTree<T>::Node {
 
         auto middle = std::next(begin, length / 2);
         auto node = std::make_unique<Node>(
-            get_bounding_box(begin, end),
+            get_bounding_box<T>(begin, end),
             begin, begin,
             build(begin, middle, max_depth, depth + 1),
             build(middle, end, max_depth, depth + 1)
@@ -143,14 +146,14 @@ struct KDTree<T>::Node {
     }
 
     Node(
-        AABBox box,
+        AABBox<typename T::float_t> box,
         mesh_iterator begin, mesh_iterator end,
         std::unique_ptr<Node>&& left,
         std::unique_ptr<Node>&& right
     ): bounding_box(box), begin(begin), end(end), left(std::move(left)), right(std::move(right)) {
     }
 
-    AABBox bounding_box;
+    AABBox<typename T::float_t> bounding_box;
     mesh_iterator begin;
     mesh_iterator end;
     std::unique_ptr<Node> left;

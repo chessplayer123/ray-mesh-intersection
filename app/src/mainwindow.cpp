@@ -32,7 +32,7 @@ void MainWindow::openFile() {
     ).toStdString();
 
     try {
-        TriangularMesh mesh = read_triangular_mesh(filePath);
+        TriangularMesh mesh = read_raw_triangular_mesh<double, size_t>(filePath);
         meshViewer->setMesh(std::move(mesh));
     } catch (char const* error_msg) {
         QMessageBox::critical(this, "Can't read file", QString(error_msg));

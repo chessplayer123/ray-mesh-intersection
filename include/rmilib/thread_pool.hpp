@@ -11,8 +11,10 @@ template<typename T>
 class ThreadPool {
 public:
     typedef typename KDTree<T>::iterator Iterator;
+    typedef typename T::float_t float_t;
+    typedef typename T::index_t index_t;
 
-    ThreadPool(const Ray& ray, Iterator root, int threads_count):
+    ThreadPool(const Ray<float_t>& ray, Iterator root, int threads_count):
         threads(threads_count), queues(threads_count),  results(threads_count),
         counter(0), threads_count(threads_count), ray(ray)
     {
@@ -23,8 +25,8 @@ public:
         }
     }
 
-    std::vector<Vector> wait_result() {
-        std::vector<Vector> result;
+    std::vector<Vector3<float_t>> wait_result() {
+        std::vector<Vector3<float_t>> result;
         for (int id = 0; id < threads_count; ++id) {
             threads[id].join();
             std::copy(results[id].begin(), results[id].end(), std::back_inserter(result));
@@ -64,7 +66,7 @@ private:
             if (cur.is_leaf()) {
                 auto [begin, end] = cur.triangles();
                 for (auto& cur = begin; cur != end; ++cur) {
-                    auto intersection = ray.intersects<T>(*cur);
+                    auto intersection = ray.template intersects<T>(*cur);
                     if (intersection.has_value()) {
                         results[thread_id].push_back(intersection.value());
                     }
@@ -92,10 +94,10 @@ private:
 
     std::vector<std::thread> threads;
     std::vector<WorkStealingQueue<Iterator>> queues;
-    std::vector<std::vector<Vector>> results;
+    std::vector<std::vector<Vector3<float_t>>> results;
 
     std::atomic_int counter;
     int threads_count;
 
-    const Ray& ray;
+    const Ray<float_t>& ray;
 };

@@ -14,7 +14,7 @@ MeshViewer::MeshViewer(QWidget* parent):
     QOpenGLWidget(parent),
     click_point(std::nullopt),
     always_find_intersections(true),
-    camera(Vector(10, 10, 10), width(), height())
+    camera(Vector3d(10, 10, 10), width(), height())
 {
     QTimer* timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &MeshViewer::updateFrame);
@@ -56,8 +56,8 @@ void MeshViewer::drawMesh() {
 QString prepareDescription(
     time_point<steady_clock> last_frame,
     size_t size,
-    const Vector& pos,
-    const Vector& dir,
+    const Vector3d& pos,
+    const Vector3d& dir,
     size_t intersections_count,
     const QString& intersection_time
 ) {

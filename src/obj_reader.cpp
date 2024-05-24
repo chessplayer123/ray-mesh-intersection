@@ -37,29 +37,29 @@ obj::Keyword MeshReader::read<obj::Keyword>() {
     throw "Unsupported keyword '" + token + "'.";
 }
 
-template<>
-TriangularMesh read_triangular_mesh<DataFormat::Obj>(std::istream& stream) {
+template<typename float_t, typename index_t>
+RawMesh<float_t, index_t> read_raw_triangular_mesh_obj(std::istream& stream) {
     MeshReader reader(stream);
 
-    std::vector<double> vertexes;
-    std::vector<size_t> indices;
+    std::vector<float_t> vertices;
+    std::vector<index_t> indices;
 
     bool has_data = true;
     while (has_data) {
         auto kw = reader.read<obj::Keyword>();
         switch (kw) {
             case obj::Vertex: {
-                double x = reader.read<double>();
-                double y = reader.read<double>();
-                double z = reader.read<double>();
-                vertexes.push_back(x);
-                vertexes.push_back(y);
-                vertexes.push_back(z);
+                float_t x = reader.read<float_t>();
+                float_t y = reader.read<float_t>();
+                float_t z = reader.read<float_t>();
+                vertices.push_back(x);
+                vertices.push_back(y);
+                vertices.push_back(z);
             } break;
             case obj::Face:
-                indices.push_back(reader.read<size_t>() - 1);
-                indices.push_back(reader.read<size_t>() - 1);
-                indices.push_back(reader.read<size_t>() - 1);
+                indices.push_back(reader.read<index_t>() - 1);
+                indices.push_back(reader.read<index_t>() - 1);
+                indices.push_back(reader.read<index_t>() - 1);
                 break;
             case obj::Comment:
             case obj::Group:
@@ -74,6 +74,8 @@ TriangularMesh read_triangular_mesh<DataFormat::Obj>(std::istream& stream) {
         }
     }
 
-    return TriangularMesh(std::move(vertexes), std::move(indices));
+    return RawMesh<float_t, index_t>(std::move(vertices), std::move(indices));
 }
 
+template TriangularMesh read_raw_triangular_mesh_obj<double, size_t>(std::istream& stream);
+template WebGLMesh read_raw_triangular_mesh_obj<float, unsigned short>(std::istream& stream);

@@ -7,7 +7,7 @@
 
 TEST_CASE("K-D Tree Building", "[benchmark][kdtree]") {
     const std::string filename = "../../data/bunny.ply";
-    TriangularMesh mesh = read_triangular_mesh(filename);
+    TriangularMesh mesh = read_raw_triangular_mesh<double, size_t>(filename);
 
     BENCHMARK("K-D Tree Building Benchmark") {
         return KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());

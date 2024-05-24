@@ -8,7 +8,7 @@ TEST_CASE("Ply reader", "[reader]") {
     std::ifstream stream;
     stream.open(file_path);
 
-    auto mesh = read_triangular_mesh<DataFormat::Ply>(stream);
+    TriangularMesh mesh = read_raw_triangular_mesh_ply<double, size_t>(stream);
 }
 
 TEST_CASE("Binary stl reader", "[reader]") {
@@ -16,7 +16,7 @@ TEST_CASE("Binary stl reader", "[reader]") {
     std::ifstream stream;
     stream.open(file_path);
 
-    auto mesh = read_triangular_mesh<DataFormat::Stl>(stream);
+    TriangularMesh mesh = read_raw_triangular_mesh_stl<double, size_t>(stream);
 }
 
 TEST_CASE("Ascii stl reader", "[reader]") {
@@ -24,7 +24,7 @@ TEST_CASE("Ascii stl reader", "[reader]") {
     std::ifstream stream;
     stream.open(file_path);
 
-    auto mesh = read_triangular_mesh<DataFormat::Stl>(stream);
+    TriangularMesh mesh = read_raw_triangular_mesh_stl<double, size_t>(stream);
 }
 
 TEST_CASE("Obj reader", "[reader]") {
@@ -32,5 +32,5 @@ TEST_CASE("Obj reader", "[reader]") {
     std::ifstream stream;
     stream.open(file_path);
 
-    auto mesh = read_triangular_mesh<DataFormat::Obj>(stream);
+    TriangularMesh mesh = read_raw_triangular_mesh_obj<double, size_t>(stream);
 }

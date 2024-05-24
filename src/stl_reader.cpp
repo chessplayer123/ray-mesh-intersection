@@ -14,12 +14,12 @@ endfacet
 ...
 endsolid name
  */
-TriangularMesh parse_ascii_mesh(MeshReader& reader) {
-    std::vector<double> coords;
-    std::vector<size_t> indices;
-    std::vector<double> normals;
+template<typename float_t, typename index_t>
+RawMesh<float_t, index_t> parse_ascii_mesh(MeshReader& reader) {
+    std::vector<float_t> coords;
+    std::vector<index_t> indices;
 
-    for(size_t counter = 0;; ++counter) {
+    for(index_t counter = 0;; ++counter) {
         std::string token = reader.read<std::string>();
         if (token == "endsolid") {
             break;
@@ -28,23 +28,23 @@ TriangularMesh parse_ascii_mesh(MeshReader& reader) {
         }
 
         reader.expect_word("normal");
-        normals.push_back(reader.read<double>());
-        normals.push_back(reader.read<double>());
-        normals.push_back(reader.read<double>());
+        reader.read<float_t>();
+        reader.read<float_t>();
+        reader.read<float_t>();
 
         reader.expect_line("outer loop");
-        for (int i = 0; i < 3; ++i) {
+        for (index_t i = 0; i < 3; ++i) {
             reader.expect_word("vertex");
-            coords.push_back(reader.read<double>());
-            coords.push_back(reader.read<double>());
-            coords.push_back(reader.read<double>());
+            coords.push_back(reader.read<float_t>());
+            coords.push_back(reader.read<float_t>());
+            coords.push_back(reader.read<float_t>());
             indices.push_back(counter + i);
         }
         reader.expect_word("endloop");
         reader.expect_word("endfacet");
     }
 
-    return TriangularMesh(std::move(coords), std::move(indices));
+    return RawMesh<float_t, index_t>(std::move(coords), std::move(indices));
 }
 
 
@@ -59,39 +59,43 @@ foreach triangle                      - 50 bytes:
     UINT16    – Attribute byte count      -  2 bytes
 end
  */
-TriangularMesh parse_binary_mesh(MeshReader& reader) {
+template<typename float_t, typename index_t>
+RawMesh<float_t, index_t> parse_binary_mesh(MeshReader& reader) {
     auto triangles_count = reader.read_as_bytes<uint32_t>();
-    std::vector<double> coords;
-    std::vector<size_t> indices;
-    std::vector<double> normals;
+    std::vector<float_t> coords;
+    std::vector<index_t> indices;
 
     for (uint32_t i = 0; i < triangles_count; ++i) {
-        normals.push_back(static_cast<double>(reader.read_as_bytes<float>()));
-        normals.push_back(static_cast<double>(reader.read_as_bytes<float>()));
-        normals.push_back(static_cast<double>(reader.read_as_bytes<float>()));
+        // skip normal
+        reader.read_as_bytes<float>();
+        reader.read_as_bytes<float>();
+        reader.read_as_bytes<float>();
         for (int j = 0; j < 3; ++j) {
-            coords.push_back(static_cast<double>(reader.read_as_bytes<float>()));
-            coords.push_back(static_cast<double>(reader.read_as_bytes<float>()));
-            coords.push_back(static_cast<double>(reader.read_as_bytes<float>()));
+            coords.push_back(static_cast<float_t>(reader.read_as_bytes<float>()));
+            coords.push_back(static_cast<float_t>(reader.read_as_bytes<float>()));
+            coords.push_back(static_cast<float_t>(reader.read_as_bytes<float>()));
             indices.push_back(3 * i + j);
         }
         reader.skip_bytes(2);
     }
 
-    return TriangularMesh(std::move(coords), std::move(indices));
+    return RawMesh(std::move(coords), std::move(indices));
 }
 
 
-template<>
-TriangularMesh read_triangular_mesh<DataFormat::Stl>(std::istream& stream) {
+template<typename float_t, typename index_t>
+RawMesh<float_t, index_t> read_raw_triangular_mesh_stl(std::istream& stream) {
     MeshReader reader(stream);
 
     std::string magic_bytes = reader.read_as_bytes(5);
     if (magic_bytes == "solid") { // ascii
         reader.skip_word();
-        return parse_ascii_mesh(reader);
+        return parse_ascii_mesh<float_t, index_t>(reader);
     } else { // binary
         reader.skip_bytes(75);
-        return parse_binary_mesh(reader);
+        return parse_binary_mesh<float_t, index_t>(reader);
     }
 }
+
+template TriangularMesh read_raw_triangular_mesh_stl<double, size_t>(std::istream& stream);
+template WebGLMesh read_raw_triangular_mesh_stl<float, unsigned short>(std::istream& stream);

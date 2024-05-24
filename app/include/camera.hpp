@@ -4,7 +4,7 @@
 
 class Camera {
 public:
-    Camera(Vector pos, int width, int height):
+    Camera(Vector3d pos, int width, int height):
         pos(pos),
         left(0, 0, -1), up(0, 1, 0), front(1, 0, 0),
         yaw(0.0), pitch(0.0),
@@ -20,23 +20,23 @@ public:
     inline void move_up(double units) { pos += up * units; }
     inline void move_down(double units) { pos -= up * units; }
 
-    inline const Vector& direction() const { return front; }
-    inline const Vector& position() const { return pos; }
+    inline const Vector3d& direction() const { return front; }
+    inline const Vector3d& position() const { return pos; }
 
     void resize(int w, int h);
     void rotate(double yaw_degree, double pitch_degree);
 
     void setup() const;
 
-    Ray eye_ray() const {
+    Ray<double> eye_ray() const {
         return Ray(pos, front);
     }
 private:
-    Vector pos;
+    Vector3d pos;
 
-    Vector left;
-    Vector up;
-    Vector front;
+    Vector3d left;
+    Vector3d up;
+    Vector3d front;
 
     double yaw;
     double pitch;
