@@ -5,55 +5,62 @@
 
 #include "rmilib/ray.hpp"
 #include "rmilib/vector.hpp"
-#include "rmilib/triangular_mesh.hpp"
+#include "rmilib/mesh.hpp"
 #include "rmilib/reader.hpp"
 
-
-std::shared_ptr<const TriangularMesh> new_triangular_mesh(std::vector<Triangle> triangles) {
-    return std::make_shared<const TriangularMesh>(std::move(triangles));
-}
-
-std::shared_ptr<const TriangularMesh> read_mesh_from_string(const std::string& filename, const std::string& data) {
+WebGLMesh read_mesh_from_string(const std::string& filename, const std::string& data) {
     DataFormat format = define_format(filename);
     std::istringstream stream(data);
     switch (format) {
-        case Ply: return std::make_shared<const TriangularMesh>(read_triangular_mesh<Ply>(stream));
-        case Stl: return std::make_shared<const TriangularMesh>(read_triangular_mesh<Stl>(stream));
-        case Obj: return std::make_shared<const TriangularMesh>(read_triangular_mesh<Obj>(stream));
+        case DataFormat::Ply: return read_raw_triangular_mesh_ply<float, unsigned short>(stream);
+        case DataFormat::Stl: return read_raw_triangular_mesh_stl<float, unsigned short>(stream);
+        case DataFormat::Obj: return read_raw_triangular_mesh_obj<float, unsigned short>(stream);
     }
 }
+
+KDTree<WebGLMesh> build_tree(WebGLMesh& mesh) {
+    return KDTree<WebGLMesh>::for_mesh(mesh.begin(), mesh.end());
+}
+
+std::vector<Vector3f> ray_intersects_tree(const Ray<float>& ray, const KDTree<WebGLMesh>& tree) {
+    return ray.intersects(tree);
+}
+
+emscripten::val get_indices(const WebGLMesh& mesh) {
+    return emscripten::val(
+        emscripten::typed_memory_view(mesh.indices().size(), mesh.indices().data())
+    );
+}
+
+emscripten::val get_vertices(const WebGLMesh& mesh) {
+    return emscripten::val(
+        emscripten::typed_memory_view(mesh.vertices().size(), mesh.vertices().data())
+    );
+}
+
 
 EMSCRIPTEN_BINDINGS(module) {
     using namespace emscripten;
 
-    class_<Vector>("Vector")
-        .constructor<double, double, double>()
-        .property("x", &Vector::x)
-        .property("y", &Vector::y)
-        .property("z", &Vector::z);
+    class_<Vector3f>("Vector")
+        .constructor<float, float, float>()
+        .property("x", &Vector3f::x)
+        .property("y", &Vector3f::y)
+        .property("z", &Vector3f::z);
 
-    class_<Triangle>("Triangle")
-        .constructor<Vector, Vector, Vector>()
-        .property("v1", &Triangle::v1)
-        .property("v2", &Triangle::v2)
-        .property("v3", &Triangle::v3);
+    register_vector<Vector3f>("PointsList");
 
-    register_vector<Triangle>("TrianglesList");
-    register_vector<Vector>("PointsList");
+    class_<WebGLMesh>("Mesh")
+        .property("size", &WebGLMesh::size)
+        .function("vertices", &get_vertices)
+        .function("indices", &get_indices);
 
-    class_<TriangularMesh>("Mesh")
-        .smart_ptr<std::shared_ptr<const TriangularMesh>>("Mesh")
-        .constructor(&new_triangular_mesh)
-        .property("size", &TriangularMesh::size)
-        .function("get", &TriangularMesh::get_ith);
+    class_<KDTree<WebGLMesh>>("KDTree")
+        .class_function("forMesh", &build_tree);
 
-    class_<KDTree>("KDTree")
-        .class_function("forMesh", &KDTree::for_mesh);
-
-    class_<Ray>("Ray")
-        .constructor<Vector, Vector>()
-        .function("intersects_tree", select_overload<std::vector<Vector>(const KDTree&, double) const>(&Ray::intersects))
-        .function("intersects_mesh", select_overload<std::vector<Vector>(const TriangularMesh&, double) const>(&Ray::intersects));
+    class_<Ray<float>>("Ray")
+        .constructor<Vector3f, Vector3f>()
+        .function("intersects_tree", &ray_intersects_tree);
 
     function("readMesh", &read_mesh_from_string);
 }

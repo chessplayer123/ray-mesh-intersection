@@ -8,17 +8,45 @@
     </head>
     <body>
         <div class="container">
-            <header class="row header">
-                <input type="file" id="input"/>
-            </header>
             <section class="row section">
                 <canvas id="canvas"></canvas>
             </section>
+
             <footer class="row footer">
-                footer
+                <label for="file-upload" class="file-label">
+                    <input type="file" id="file-upload" accept=".stl,.obj,.ply"/>
+                    Upload mesh <i>(<= 65536 vertices) (stl | obj | ply)</i>
+                </label>
             </footer>
         <div>
+
+        <script id="shader-vs" type="x-shader/x-vertex">
+            #version 300 es
+
+            in vec4 a_position;
+
+            uniform mat4 u_projection;
+            uniform mat4 u_view;
+
+            void main(void) {
+                gl_Position = u_projection * u_view * a_position;
+            }
+        </script>
+
+        <script id="shader-fs" type="x-shader/x-fragment">
+            #version 300 es
+
+            precision highp float;
+            out vec4 outColor;
+            void main(void) {
+                outColor = vec4(1.0, 1.0, 1.0, 1.0);
+            }
+        </script>
+
+        <script src="web/js/twgl-full.min.js"></script>
         <script src="web/js/rmilib_wasm.js"></script>
+        <script src="web/js/camera.js"></script>
+        <script src="web/js/mesh.js"></script>
         <script src="web/js/viewer.js"></script>
     </body>
 </html>
