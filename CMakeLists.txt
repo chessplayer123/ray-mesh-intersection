@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(RAY_MESH_INTERSECTION)
 
-set(CXX_MSVC_FLAGS "/std:c++17 /O2")
+set(CXX_MSVC_FLAGS "/std:c++17 /O2 /EHsc")
 set(CXX_GNU_FLAGS "-Wall -Wextra -pedantic -O2 -std=c++17")
 
 if (CMAKE_COMPILER_IS_GNUCXX)

@@ -38,7 +38,7 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
     }
 
     GIVEN("Ray perpendicular to triangle without intersection") {
-        Ray ray(Vector3d(10, 0, 0), Vector3d(1, 0, 0));
+        Ray<double> ray(Vector3d(10, 0, 0), Vector3d(1, 0, 0));
         MeshMock mesh(Vector3d(1, 0, 0), Vector3d(0, 1, 0), Vector3d(1, 1, 0));
 
         auto triangle = *mesh.begin();
@@ -51,7 +51,7 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
     }
 
     GIVEN("Ray perpendicular to triangle with intersection") {
-        Ray ray(Vector3d(10, 1, 1), Vector3d(-1, 0, 0));
+        Ray<double> ray(Vector3d(10, 1, 1), Vector3d(-1, 0, 0));
         MeshMock mesh(Vector3d(0, 1, 0), Vector3d(0, 0, 1), Vector3d(0, 1, 1));
         auto triangle = *mesh.begin();
         WHEN("Finding intersection") {
@@ -65,7 +65,7 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
     }
 
     GIVEN("Ray positioned randomly relative to triangle with intersection") {
-        Ray ray(Vector3d(0.4, 0.2, 1.3), Vector3d(-1.3, 0.3, -7));
+        Ray<double> ray(Vector3d(0.4, 0.2, 1.3), Vector3d(-1.3, 0.3, -7));
         MeshMock mesh(Vector3d(-1, 0.5, 2.3), Vector3d(0, -0.15, 0), Vector3d(1.3, 1, 1));
         auto triangle = *mesh.begin();
         WHEN("Finding intersection") {
@@ -79,7 +79,7 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
     }
 
     GIVEN("Ray positioned randomly relative to triangle without intersection") {
-        Ray ray(Vector3d(0.4, 0.2, 1.3), Vector3d(1.3, -0.3, 7));
+        Ray<double> ray(Vector3d(0.4, 0.2, 1.3), Vector3d(1.3, -0.3, 7));
         MeshMock mesh(Vector3d(-1, 0.5, 2.3), Vector3d(0, -0.15, 0), Vector3d(1.3, 1, 1));
         auto triangle = *mesh.begin();
         WHEN("Finding intersection") {
@@ -93,7 +93,7 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
 
 TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
     GIVEN("Ray outside AABB with intersection") {
-        Ray ray(Vector3d(2, 2, 2), Vector3d(-1, -1, -1));
+        Ray<double> ray(Vector3d(2, 2, 2), Vector3d(-1, -1, -1));
         AABBox<double> aabb = {Vector3d(-1, -1, -1), Vector3d(1, 1, 1)};
         WHEN("Checking whether they intersects") {
             bool is_intersects = ray.intersects(aabb);
@@ -104,7 +104,7 @@ TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
     }
 
     GIVEN("Ray outside AABB without intersection") {
-        Ray ray(Vector3d(10, 2, 2), Vector3d(1, 1, 1));
+        Ray<double> ray(Vector3d(10, 2, 2), Vector3d(1, 1, 1));
         AABBox<double> aabb = {Vector3d(-1, -1, -1), Vector3d(1, 1, 1)};
         WHEN("Checking whether they intersects") {
             bool is_intersects = ray.intersects(aabb);
@@ -115,7 +115,7 @@ TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
     }
 
     GIVEN("Ray above AABB without intersection") {
-        Ray ray(Vector3d(2, 2, 2), Vector3d(-1, -1, 0));
+        Ray<double> ray(Vector3d(2, 2, 2), Vector3d(-1, -1, 0));
         AABBox<double> aabb = {Vector3d(-1, -1, -1), Vector3d(1, 1, 1)};
         WHEN("Checking whether they intersects") {
             bool is_intersects = ray.intersects(aabb);
@@ -126,7 +126,7 @@ TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
     }
 
     GIVEN("Ray inside AABB") {
-        Ray ray(Vector3d(0, 0, 0), Vector3d(1, 0, 0));
+        Ray<double> ray(Vector3d(0, 0, 0), Vector3d(1, 0, 0));
         AABBox<double> aabb = {Vector3d(-1, -1, -1), Vector3d(1, 1, 1)};
         WHEN("Checking whether they intersects") {
             bool is_intersects = ray.intersects(aabb);
@@ -153,7 +153,7 @@ TEST_CASE("Ray and triangular mesh intersection methods", "[ray][mesh][kdtree]")
 
             expected_intersections.emplace_back(x, 0, 0);
         }
-        Ray ray(Vector3d(0, 0, 0), Vector3d(1, 0, 0));
+        Ray<double> ray(Vector3d(0, 0, 0), Vector3d(1, 0, 0));
         TriangularMesh mesh(std::move(coords), std::move(indices));
 
         WHEN("Finding intersections with mesh") {
