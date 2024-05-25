@@ -12,7 +12,7 @@
 
 ## Build
 ```
-cmake -S . -B build [-DBUILD_TESTS=on] [-DBUILD_QT_APP=on] [-DBUILD_WASM=on] [-DBACKEND=NONE|POOL|OPENMP]
+cmake -S . -B build [-DBUILD_TESTS=on] [-DBUILD_QT_APP=on] [-DINCLUDE_OMP=ON] [-DINCLUDE_POOL=ON]
 cd build
 make -j%
 ```

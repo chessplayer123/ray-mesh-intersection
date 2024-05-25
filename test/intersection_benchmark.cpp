@@ -19,7 +19,7 @@ public:
     }
 
     Ray<double> next_ray() {
-        return Ray(
+        return Ray<double>(
             Vector3d(dist(engine), dist(engine), dist(engine)),
             Vector3d(dist(engine), dist(engine), dist(engine))
         );
@@ -55,14 +55,14 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
 
     generator.reset();
     BENCHMARK_ADVANCED(concat("Linear search ", mesh.size()))(auto meter) {
-        Ray ray = generator.next_ray();
+        auto ray = generator.next_ray();
         meter.measure([&ray, &mesh] { return ray.intersects(mesh); });
     };
 
 
     generator.reset();
     BENCHMARK_ADVANCED(concat("Sync K-D Tree search ", mesh.size()))(auto meter) {
-        Ray ray = generator.next_ray();
+        auto ray = generator.next_ray();
         meter.measure([&ray, &kdtree] { return ray.intersects(kdtree); });
     };
 
@@ -72,7 +72,7 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
     BENCHMARK_ADVANCED(concat(
         "OMP (", threads_count, " threads) K-D Tree search ", mesh.size()
     ))(auto meter) {
-        Ray ray = generator.next_ray();
+        auto ray = generator.next_ray();
         meter.measure([&ray, &kdtree, threads_count] {
             return parallel_intersects_omp(ray, kdtree, threads_count);
         });
@@ -84,7 +84,7 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
     BENCHMARK_ADVANCED(concat(
         "Thread pool (", threads_count, " threads) K-D Tree search ", mesh.size()
     ))(auto meter) {
-        Ray ray = generator.next_ray();
+        auto ray = generator.next_ray();
         meter.measure([&ray, &kdtree, threads_count] {
             return parallel_intersects_pool(ray, kdtree, threads_count);
         });
