@@ -29,11 +29,11 @@ public:
         return m_size;
     }
 
-    std::vector<float_t> vertices() const {
+    const std::vector<float_t>& vertices() const {
         return m_vertices;
     }
 
-    std::vector<index_t> indices() const {
+    const std::vector<index_t>& indices() const {
         return m_indices;
     }
 private:
