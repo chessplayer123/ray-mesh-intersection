@@ -12,9 +12,9 @@ WebGLMesh read_mesh_from_string(const std::string& filename, const std::string& 
     DataFormat format = define_format(filename);
     std::istringstream stream(data);
     switch (format) {
-        case DataFormat::Ply: return read_raw_triangular_mesh_ply<float, unsigned short>(stream);
-        case DataFormat::Stl: return read_raw_triangular_mesh_stl<float, unsigned short>(stream);
-        case DataFormat::Obj: return read_raw_triangular_mesh_obj<float, unsigned short>(stream);
+        case DataFormat::Ply: return read_raw_triangular_mesh_ply<float, unsigned int>(stream);
+        case DataFormat::Stl: return read_raw_triangular_mesh_stl<float, unsigned int>(stream);
+        case DataFormat::Obj: return read_raw_triangular_mesh_obj<float, unsigned int>(stream);
     }
 }
 

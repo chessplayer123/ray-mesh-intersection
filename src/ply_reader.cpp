@@ -162,4 +162,4 @@ RawMesh<float_t, index_t> read_raw_triangular_mesh_ply(std::istream& stream) {
 }
 
 template TriangularMesh read_raw_triangular_mesh_ply<double, size_t>(std::istream& stream);
-template WebGLMesh read_raw_triangular_mesh_ply<float, unsigned short>(std::istream& stream);
+template WebGLMesh read_raw_triangular_mesh_ply<float, unsigned int>(std::istream& stream);

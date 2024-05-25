@@ -16,4 +16,4 @@ RawMesh<float_t, index_t> read_raw_triangular_mesh(const std::string& path) {
 
 template TriangularMesh read_raw_triangular_mesh<double, size_t>(const std::string& path);
 
-template WebGLMesh read_raw_triangular_mesh<float, unsigned short>(const std::string& path);
+template WebGLMesh read_raw_triangular_mesh<float, unsigned int>(const std::string& path);

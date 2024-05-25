@@ -44,4 +44,4 @@ private:
 
 typedef RawMesh<double, size_t> TriangularMesh;
 
-typedef RawMesh<float, unsigned short> WebGLMesh;
+typedef RawMesh<float, unsigned int> WebGLMesh;
