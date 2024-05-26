@@ -1,5 +1,5 @@
 ![build status](https://github.com/chessplayer123/ray-mesh-intersection/actions/workflows/cmake-multi-platform.yml/badge.svg)
-# Ray And Triangular Mesh Intersection
+# Ray And Triangular Mesh Intersection Library
 
 ## Usage
 
@@ -8,7 +8,7 @@
 class MyWrapperClassName: public Mesh<MyWrapperClassName, my_float_t, my_index_t> {
 public:
     MyWrapperClassName(...):
-        Mesh<MyWrapperClassName, my_float_t, your_index_t>(my_of_your_mesh)
+        Mesh<MyWrapperClassName, my_float_t, my_index_t>(my_of_your_mesh)
         ...
     {
        ...
