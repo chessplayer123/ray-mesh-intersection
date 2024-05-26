@@ -18,9 +18,9 @@ let texture;
 
 
 window.onresize = () => {
-    resizeCanvas;
+    resizeCanvas();
     paint();
-}
+};
 
 
 Module.onRuntimeInitialized = () => {
