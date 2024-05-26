@@ -44,27 +44,34 @@ canvas.onmousemove = (event) => {
 };
 
 
+function findIntersections() {
+    const ray = camera.eyeRay();
+
+    const start = performance.now();
+    const points = ray.intersects_tree(mesh.kdtree);
+    const timeSpent = Number(performance.now() - start).toFixed(3);
+
+    document.getElementById("output").innerHTML = `Found: ${points.size()}\n${timeSpent} ms was spent`
+
+    let coords = [];
+    for (let i = 0; i < points.size(); ++i) {
+        const p = points.get(i);
+        coords.push(p.x, p.y, p.z);
+    }
+    pointsBufferInfo = twgl.createBufferInfoFromArrays(gl, {
+        position: new Float32Array(coords)
+    })
+    pointsVAO = twgl.createVAOFromBufferInfo(gl, programInfo, pointsBufferInfo);
+}
+
+
 onkeydown = (event) => {
     if (document.pointerLockElement != canvas) {
         return;
     }
 
-    console.log(event)
     switch (event.key) {
-        case "q":
-            const ray = camera.eyeRay();
-            const points = ray.intersects_tree(mesh.kdtree);
-            let coords = [];
-            for (let i = 0; i < points.size(); ++i) {
-                const p = points.get(i);
-                coords.push(p.x, p.y, p.z);
-            }
-            let v = new Float32Array(coords)
-            pointsBufferInfo = twgl.createBufferInfoFromArrays(gl, {
-                position: v
-            })
-            pointsVAO = twgl.createVAOFromBufferInfo(gl, programInfo, pointsBufferInfo);
-            break;
+        case "q":     findIntersections();      break;
         case "w":     moveForward =  stepUnits; break;
         case "s":     moveForward = -stepUnits; break;
         case "a":     moveLeft    =  stepUnits; break;
