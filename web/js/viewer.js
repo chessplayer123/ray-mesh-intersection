@@ -1,11 +1,16 @@
 const canvas = document.getElementById("canvas");
 const mesh = new Mesh();
 const camera = new Camera();
-let gl;
-let programInfo;
+const maxFramerate = 120;
+const stepUnits = 0.2
+let lastRenderTime = 0;
+
 let moveLeft = 0;
 let moveUp = 0;
 let moveForward = 0;
+
+let gl;
+let programInfo;
 
 let pointsVAO;
 let pointsBufferInfo;
@@ -13,20 +18,21 @@ let texture;
 
 
 window.onresize = () => {
-    resizeCanvas();
+    resizeCanvas;
     paint();
-};
+}
 
 
 Module.onRuntimeInitialized = () => {
     initializeGL();
-    paint();
+    resizeCanvas();
 };
 
 
-canvas.onclick = () => {
+canvas.onclick = async () => {
     if (mesh.isLoaded()) {
-        canvas.requestPointerLock();
+        await canvas.requestPointerLock();
+        window.requestAnimationFrame(update);
     }
 }
 
@@ -34,16 +40,16 @@ canvas.onclick = () => {
 canvas.onmousemove = (event) => {
     if (document.pointerLockElement == canvas) {
         camera.rotate(event.movementX, -event.movementY);
-        paint();
     }
 };
 
 
-onkeypress = (event) => {
+onkeydown = (event) => {
     if (document.pointerLockElement != canvas) {
         return;
     }
 
+    console.log(event)
     switch (event.key) {
         case "q":
             const ray = camera.eyeRay();
@@ -59,29 +65,29 @@ onkeypress = (event) => {
             })
             pointsVAO = twgl.createVAOFromBufferInfo(gl, programInfo, pointsBufferInfo);
             break;
-        case "w": moveForward = 1; break;
-        case "s": moveForward = -1; break;
-        case "a": moveLeft = 1; break;
-        case "d": moveLeft = -1; break;
-        default: return;
+        case "w":     moveForward =  stepUnits; break;
+        case "s":     moveForward = -stepUnits; break;
+        case "a":     moveLeft    =  stepUnits; break;
+        case "d":     moveLeft    = -stepUnits; break;
+        case " ":     moveUp      =  stepUnits; break;
+        case "Shift": moveUp      = -stepUnits; break;
     }
-    camera.move(moveForward, moveLeft, moveUp);
-    paint();
 };
 
 
 onkeyup = (event) => {
-    switch (event.key) {
-        case "w":
-        case "s":
-            moveForward = 0;
-            break;
-        case "d":
-        case "a":
-            moveLeft = 0;
-            break;
-        default:
-            return;
+    if (event.key == "w" && moveForward > 0) {
+        moveForward = 0;
+    } else if (event.key == "s" && moveForward < 0) {
+        moveForward = 0;
+    } else if (event.key == "d" && moveLeft < 0) {
+        moveLeft = 0;
+    } else if (event.key == "a" && moveLeft > 0) {
+        moveLeft = 0;
+    } else if (event.key == " " && moveUp > 0) {
+        moveUp = 0;
+    } else if (event.key == "Shift" && moveUp < 0) {
+        moveUp = 0;
     }
 };
 
@@ -101,6 +107,7 @@ function initializeGL() {
     gl = canvas.getContext("webgl2") || canvas.getContext("experimental-webgl");
     if (!gl) {
         alert("Your browser doesn't support WebGL");
+        return;
     }
     programInfo = twgl.createProgramInfo(gl, [
         document.getElementById("shader-vs").firstChild.textContent,
@@ -130,8 +137,18 @@ function initializeGL() {
         wrapS: gl.CLAMP_TO_EDGE, wrapT: gl.CLAMP_TO_EDGE,
         src: ctx.getImageData(0, 0, texCanvas.width, texCanvas.height).data
     })
+}
 
-    resizeCanvas();
+
+function update(curTime) {
+    if (curTime - lastRenderTime >= 1000 / maxFramerate) {
+        camera.move(moveForward, moveLeft, moveUp);
+        paint();
+    }
+    lastRenderTime = curTime;
+    if (document.pointerLockElement == canvas) {
+        window.requestAnimationFrame(update);
+    }
 }
 
 
