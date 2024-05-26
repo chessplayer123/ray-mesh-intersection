@@ -9,12 +9,17 @@ class Mesh {
     update(gl, filename, data) {
         this.mesh = Module.readMesh(filename, data);
 
+        let texCoords = [];
+        for (let i = 0; i < this.mesh.size; ++i) {
+            texCoords.push(0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0)
+        }
+
         this.bufferInfo = twgl.createBufferInfoFromArrays(gl, {
             position: this.mesh.vertices(),
+            texcoord: new Float32Array(texCoords),
             indices: this.mesh.indices(),
         })
         this.vao = twgl.createVAOFromBufferInfo(gl, programInfo, this.bufferInfo)
-        gl.bindVertexArray(mesh.vao);
         this.kdtree = Module.KDTree.forMesh(this.mesh);
     }
 
@@ -23,7 +28,12 @@ class Mesh {
     }
 
     draw(gl) {
-        twgl.drawBufferInfo(gl, mesh.bufferInfo, gl.LINES);
+        twgl.setUniforms(programInfo, {
+            u_texture: texture,
+        });
+
+        gl.bindVertexArray(this.vao);
+        twgl.drawBufferInfo(gl, this.bufferInfo, gl.TRIANGLES);
     }
 }
 

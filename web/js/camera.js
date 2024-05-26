@@ -11,7 +11,7 @@ class Camera {
         this.yaw = 0.0;
         this.pitch = 0.0;
 
-        this.projection = twgl.m4.perspective(1.0, 1, 0.1, 1000);
+        this.projection = twgl.m4.perspective(2.0, 1, 0.01, 1000);
         this.view = twgl.m4.lookAt(
             this.pos,
             twgl.v3.add(this.pos, this.front),
@@ -24,6 +24,7 @@ class Camera {
             u_view: twgl.m4.inverse(this.view),
             u_projection: this.projection,
         });
+
     }
 
     rotate(yaw_delta_degree, pitch_delta_degree) {
@@ -74,8 +75,8 @@ class Camera {
 
     eyeRay() {
         return new Module.Ray(
-            new Module.Vector(0, 0, 0),
-            new Module.Vector(0, 0, 0),
+            new Module.Vector(this.pos[0], this.pos[1], this.pos[2]),
+            new Module.Vector(this.front[0], this.front[1], this.front[2]),
         );
     }
 }

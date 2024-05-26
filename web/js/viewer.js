@@ -7,6 +7,10 @@ let moveLeft = 0;
 let moveUp = 0;
 let moveForward = 0;
 
+let pointsVAO;
+let pointsBufferInfo;
+let texture;
+
 
 window.onresize = () => {
     resizeCanvas();
@@ -20,7 +24,11 @@ Module.onRuntimeInitialized = () => {
 };
 
 
-canvas.onclick = canvas.requestPointerLock;
+canvas.onclick = () => {
+    if (mesh.isLoaded()) {
+        canvas.requestPointerLock();
+    }
+}
 
 
 canvas.onmousemove = (event) => {
@@ -32,7 +40,25 @@ canvas.onmousemove = (event) => {
 
 
 onkeypress = (event) => {
+    if (document.pointerLockElement != canvas) {
+        return;
+    }
+
     switch (event.key) {
+        case "q":
+            const ray = camera.eyeRay();
+            const points = ray.intersects_tree(mesh.kdtree);
+            let coords = [];
+            for (let i = 0; i < points.size(); ++i) {
+                const p = points.get(i);
+                coords.push(p.x, p.y, p.z);
+            }
+            let v = new Float32Array(coords)
+            pointsBufferInfo = twgl.createBufferInfoFromArrays(gl, {
+                position: v
+            })
+            pointsVAO = twgl.createVAOFromBufferInfo(gl, programInfo, pointsBufferInfo);
+            break;
         case "w": moveForward = 1; break;
         case "s": moveForward = -1; break;
         case "a": moveLeft = 1; break;
@@ -84,8 +110,26 @@ function initializeGL() {
     gl.useProgram(programInfo.program);
 
     gl.clearColor(0.23, 0.25, 0.27, 1.0);
-    gl.enable(gl.CULL_FACE);
     gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+
+    const texCanvas = document.createElement("canvas")
+    texCanvas.width = 256
+    texCanvas.height = 256
+    const ctx = texCanvas.getContext("2d");
+    ctx.fillStyle = "rgba(255, 255, 255, 255)"
+    ctx.fillRect(0, 0, texCanvas.width, texCanvas.height)
+    ctx.clearRect(1, 1, 254, 254);
+
+    texture = twgl.createTexture(gl, {
+        width: texCanvas.width, height: texCanvas.height,
+        format: gl.RGBA, internalFormat: gl.RGBA, type: gl.UNSIGNED_BYTE,
+        min: gl.NEAREST, mag: gl.NEAREST,
+        wrapS: gl.CLAMP_TO_EDGE, wrapT: gl.CLAMP_TO_EDGE,
+        src: ctx.getImageData(0, 0, texCanvas.width, texCanvas.height).data
+    })
 
     resizeCanvas();
 }
@@ -96,6 +140,11 @@ function paint() {
     camera.prepareScene();
     if (mesh.isLoaded()) {
         mesh.draw(gl);
+
+        if (pointsVAO) {
+            gl.bindVertexArray(pointsVAO);
+            twgl.drawBufferInfo(gl, pointsBufferInfo, gl.POINTS);
+        }
     }
 }
 

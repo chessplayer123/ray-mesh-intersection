@@ -7,6 +7,12 @@
 
     </head>
     <body>
+        <pre style="position: absolute; color: #fed053; font-size: 16px;">
+Use <b>wasd</b> to move, <b>q</b> to cast a ray
+<b>Click on window</b> to start movement
+<b>Click button</b> below to upload a file
+        </pre>
+
         <div class="container">
             <section class="row section">
                 <canvas id="canvas"></canvas>
@@ -15,7 +21,7 @@
             <footer class="row footer">
                 <label for="file-upload" class="file-label">
                     <input type="file" id="file-upload" accept=".stl,.obj,.ply"/>
-                    Upload mesh <i>(<= 65536 vertices) (stl | obj | ply)</i>
+                    Upload <sub>(stl, obj, ply)</sub>
                 </label>
             </footer>
         <div>
@@ -24,22 +30,37 @@
             #version 300 es
 
             in vec4 a_position;
+            in vec2 a_texcoord;
 
             uniform mat4 u_projection;
             uniform mat4 u_view;
 
+            out vec2 v_texcoord;
+
             void main(void) {
                 gl_Position = u_projection * u_view * a_position;
+                gl_PointSize = 10.0;
+                v_texcoord = a_texcoord;
             }
         </script>
 
         <script id="shader-fs" type="x-shader/x-fragment">
             #version 300 es
-
             precision highp float;
+
+            in vec2 v_texcoord;
+
+            uniform sampler2D u_texture;
+
             out vec4 outColor;
+
             void main(void) {
-                outColor = vec4(1.0, 1.0, 1.0, 1.0);
+                vec4 color = texture(u_texture, v_texcoord);
+                if (color.a < 0.1) {
+                    discard;
+                } else {
+                    outColor = color;
+                }
             }
         </script>
 
