@@ -1,9 +1,26 @@
 class Mesh {
-    constructor() {
+    constructor(gl) {
         this.mesh = null;
         this.vao = null;
         this.bufferInfo = null;
         this.kdtree = null;
+
+        const texCanvas = document.createElement("canvas")
+        texCanvas.width = 256
+        texCanvas.height = 256
+        const ctx = texCanvas.getContext("2d");
+        ctx.fillStyle = "rgba(255, 255, 255, 255)"
+        ctx.fillRect(0, 0, texCanvas.width, texCanvas.height)
+        ctx.clearRect(1, 1, 254, 254);
+
+        this.texture = twgl.createTexture(gl, {
+            width: texCanvas.width, height: texCanvas.height,
+            format: gl.RGBA, internalFormat: gl.RGBA, type: gl.UNSIGNED_BYTE,
+            min: gl.NEAREST, mag: gl.NEAREST,
+            wrapS: gl.CLAMP_TO_EDGE, wrapT: gl.CLAMP_TO_EDGE,
+            src: ctx.getImageData(0, 0, texCanvas.width, texCanvas.height).data
+        })
+
     }
 
     update(gl, programInfo, filename, data) {
@@ -29,7 +46,7 @@ class Mesh {
 
     draw(gl) {
         twgl.setUniforms(programInfo, {
-            u_texture: texture,
+            u_texture: this.texture,
         });
 
         gl.bindVertexArray(this.vao);

@@ -1,20 +1,18 @@
 const canvas = document.getElementById("canvas");
 const infoField = document.getElementById("help-message");
 const intersectionsData = document.getElementById("app-data");
-const mesh = new Mesh();
+
+const [gl, programInfo] = initializeGL(canvas);
+const mesh = new Mesh(gl);
 const camera = new Camera();
 const points = new Points();
+
 const maxFramerate = 120;
 const stepUnits = 0.2;
 let lastRenderTime = 0;
-
 let moveLeft = 0;
 let moveUp = 0;
 let moveForward = 0;
-
-let gl;
-let programInfo;
-let texture;
 
 
 function toFixed(num, digitsCount=2) {
@@ -29,7 +27,7 @@ window.onresize = () => {
 
 
 Module.onRuntimeInitialized = () => {
-    initializeGL();
+    infoField.style.visibility = "visible";
     resizeCanvas();
     gl.clear(gl.COLOR_BUFFER_BIT);
 };
@@ -132,13 +130,13 @@ function findIntersections() {
 }
 
 
-function initializeGL() {
-    gl = canvas.getContext("webgl2") || canvas.getContext("experimental-webgl");
+function initializeGL(canvas) {
+    let gl = canvas.getContext("webgl2") || canvas.getContext("experimental-webgl");
     if (!gl) {
         alert("Your browser doesn't support WebGL");
         return;
     }
-    programInfo = twgl.createProgramInfo(gl, [
+    let programInfo = twgl.createProgramInfo(gl, [
         document.getElementById("shader-vs").firstChild.textContent,
         document.getElementById("shader-fs").firstChild.textContent,
     ]);
@@ -150,21 +148,7 @@ function initializeGL() {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    const texCanvas = document.createElement("canvas")
-    texCanvas.width = 256
-    texCanvas.height = 256
-    const ctx = texCanvas.getContext("2d");
-    ctx.fillStyle = "rgba(255, 255, 255, 255)"
-    ctx.fillRect(0, 0, texCanvas.width, texCanvas.height)
-    ctx.clearRect(1, 1, 254, 254);
-
-    texture = twgl.createTexture(gl, {
-        width: texCanvas.width, height: texCanvas.height,
-        format: gl.RGBA, internalFormat: gl.RGBA, type: gl.UNSIGNED_BYTE,
-        min: gl.NEAREST, mag: gl.NEAREST,
-        wrapS: gl.CLAMP_TO_EDGE, wrapT: gl.CLAMP_TO_EDGE,
-        src: ctx.getImageData(0, 0, texCanvas.width, texCanvas.height).data
-    })
+    return [gl, programInfo]
 }
 
 
