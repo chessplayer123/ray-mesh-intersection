@@ -15,6 +15,12 @@ class Points {
     }
 
     update(gl, programInfo, points) {
+        if (points.size() == 0) {
+            this.vao = null;
+            this.bufferInfo = null;
+            return [];
+        }
+
         let coords = [];
         let pointsRepr = [];
         for (let i = 0; i < points.size(); ++i) {
