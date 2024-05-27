@@ -8,16 +8,16 @@
 class MyWrapperClassName: public Mesh<MyWrapperClassName, my_float_t, my_index_t> {
 public:
     MyWrapperClassName(...):
-        Mesh<MyWrapperClassName, my_float_t, my_index_t>(my_of_your_mesh)
+        Mesh<MyWrapperClassName, my_float_t, my_index_t>(size_of_mesh)
         ...
     {
        ...
     }
 
     template<my_index_t>
-    inline Vector<my_float_t> v(my_index_t index) const {
+    inline Vector3<my_float_t> v(my_index_t index) const {
         ...
-        return Vector<my_float_t>(x, y, z);
+        return Vector3<my_float_t>(x, y, z);
     }
     ...
 };
@@ -28,11 +28,11 @@ public:
 const MyWrapperClassName mesh(...);
 const int depth = 16;
 const auto kdtree = KDTree<MyWrapperClassName>::for_mesh(mesh.begin(), mesh.end(), depth);
-const Ray ray(
-    Vector(...), // origin
-    Vector(...)  // direction
+const Ray<my_float_t> ray(
+    Vector3<my_float_t>(...), // origin
+    Vector3<my_float_t>(...)  // direction
 );
-std::vector<Vector> points = ray.intersects(kdtree);
+std::vector<Vector3<my_float_t>> points = ray.intersects(kdtree);
 ```
 
 ## Project structure
