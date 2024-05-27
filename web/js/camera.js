@@ -1,4 +1,4 @@
-const M_PI_2 = Math.PI / 2;
+const M_PI_2 = 3.14 / 2;
 
 class Camera {
     constructor(point, vector) {
@@ -24,7 +24,6 @@ class Camera {
             u_view: twgl.m4.inverse(this.view),
             u_projection: this.projection,
         });
-
     }
 
     rotate(yaw_delta_degree, pitch_delta_degree) {

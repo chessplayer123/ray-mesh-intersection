@@ -7,30 +7,22 @@
 
     </head>
     <body>
-        <pre class="text">
-Use <i>(works only if mesh is loaded)</i>:
-    <b>wasd</b> to move around
-    <b>Space</b> to move up
-    <b>Shift</b> to move down
-    <b>q</b> to cast a ray
-<b>Click button</b> below to upload a file
-<b>Click on window</b> to start movement
-        </pre>
+        <canvas id="canvas"></canvas>
 
-        <pre class="text" id="output"></pre>
+        <div class="info-box" id="help-message">
+<pre><b>Left click on canvas</b> to start movement
+<b>wasd</b> to move around
+<b>Space</b> to move up
+<b>Shift</b> to move down
+<b>q</b> to cast a ray</pre>
 
-        <div class="container">
-            <section class="row section">
-                <canvas id="canvas"></canvas>
-            </section>
+            <label for="file-upload" class="upload-button">
+                <input type="file" id="file-upload" accept=".stl,.obj,.ply"/>
+                Upload 📁 <i>(stl, obj, ply)</i>
+            </label>
+        </div>
 
-            <footer class="row footer">
-                <label for="file-upload" class="file-label">
-                    <input type="file" id="file-upload" accept=".stl,.obj,.ply"/>
-                    Upload <sub>(stl, obj, ply)</sub>
-                </label>
-            </footer>
-        <div>
+        <pre class="info-box" id="app-data" style="visibility: hidden;"></pre>
 
         <script id="shader-vs" type="x-shader/x-vertex">
             #version 300 es
@@ -73,6 +65,7 @@ Use <i>(works only if mesh is loaded)</i>:
         <script src="web/js/twgl-full.min.js"></script>
         <script src="web/js/rmilib_wasm.js"></script>
         <script src="web/js/camera.js"></script>
+        <script src="web/js/points.js"></script>
         <script src="web/js/mesh.js"></script>
         <script src="web/js/viewer.js"></script>
     </body>

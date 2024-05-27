@@ -1,8 +1,11 @@
 const canvas = document.getElementById("canvas");
+const infoField = document.getElementById("help-message");
+const intersectionsData = document.getElementById("app-data");
 const mesh = new Mesh();
 const camera = new Camera();
+const points = new Points();
 const maxFramerate = 120;
-const stepUnits = 0.2
+const stepUnits = 0.2;
 let lastRenderTime = 0;
 
 let moveLeft = 0;
@@ -11,10 +14,12 @@ let moveForward = 0;
 
 let gl;
 let programInfo;
-
-let pointsVAO;
-let pointsBufferInfo;
 let texture;
+
+
+function toFixed(num, digitsCount=2) {
+    return Number(num).toFixed(digitsCount);
+}
 
 
 window.onresize = () => {
@@ -26,15 +31,29 @@ window.onresize = () => {
 Module.onRuntimeInitialized = () => {
     initializeGL();
     resizeCanvas();
+    gl.clear(gl.COLOR_BUFFER_BIT);
 };
 
 
-canvas.onclick = async () => {
+canvas.onclick = () => {
     if (mesh.isLoaded()) {
-        await canvas.requestPointerLock();
-        window.requestAnimationFrame(update);
+        canvas.requestPointerLock();
     }
 }
+
+
+document.onpointerlockchange = (event) => {
+    if (document.pointerLockElement == canvas) {
+        infoField.style.visibility = "hidden";
+        window.requestAnimationFrame(update);
+    } else {
+        infoField.style.visibility = "visible";
+
+        moveForward = 0;
+        moveUp = 0;
+        moveLeft = 0;
+    }
+};
 
 
 canvas.onmousemove = (event) => {
@@ -44,56 +63,36 @@ canvas.onmousemove = (event) => {
 };
 
 
-function findIntersections() {
-    const ray = camera.eyeRay();
-
-    const start = performance.now();
-    const points = ray.intersects_tree(mesh.kdtree);
-    const timeSpent = Number(performance.now() - start).toFixed(3);
-
-    document.getElementById("output").innerHTML = `Found: ${points.size()}\n${timeSpent} ms was spent`
-
-    let coords = [];
-    for (let i = 0; i < points.size(); ++i) {
-        const p = points.get(i);
-        coords.push(p.x, p.y, p.z);
-    }
-    pointsBufferInfo = twgl.createBufferInfoFromArrays(gl, {
-        position: new Float32Array(coords)
-    })
-    pointsVAO = twgl.createVAOFromBufferInfo(gl, programInfo, pointsBufferInfo);
-}
-
-
 onkeydown = (event) => {
     if (document.pointerLockElement != canvas) {
         return;
     }
 
-    switch (event.key) {
-        case "q":     findIntersections();      break;
-        case "w":     moveForward =  stepUnits; break;
-        case "s":     moveForward = -stepUnits; break;
-        case "a":     moveLeft    =  stepUnits; break;
-        case "d":     moveLeft    = -stepUnits; break;
-        case " ":     moveUp      =  stepUnits; break;
-        case "Shift": moveUp      = -stepUnits; break;
+    switch (event.code) {
+        case "KeyQ":      findIntersections();      break;
+        case "KeyW":      moveForward =  stepUnits; break;
+        case "KeyS":      moveForward = -stepUnits; break;
+        case "KeyA":      moveLeft    =  stepUnits; break;
+        case "KeyD":      moveLeft    = -stepUnits; break;
+        case "Space":     moveUp      =  stepUnits; break;
+        case "ShiftLeft": moveUp      = -stepUnits; break;
     }
 };
 
 
 onkeyup = (event) => {
-    if (event.key == "w" && moveForward > 0) {
+    const key = event.code;
+    if (key == "KeyW" && moveForward > 0) {
         moveForward = 0;
-    } else if (event.key == "s" && moveForward < 0) {
+    } else if (key == "KeyS" && moveForward < 0) {
         moveForward = 0;
-    } else if (event.key == "d" && moveLeft < 0) {
+    } else if (key == "KeyD" && moveLeft < 0) {
         moveLeft = 0;
-    } else if (event.key == "a" && moveLeft > 0) {
+    } else if (key == "KeyA" && moveLeft > 0) {
         moveLeft = 0;
-    } else if (event.key == " " && moveUp > 0) {
+    } else if (key == "Space" && moveUp > 0) {
         moveUp = 0;
-    } else if (event.key == "Shift" && moveUp < 0) {
+    } else if (key == "ShiftLeft" && moveUp < 0) {
         moveUp = 0;
     }
 };
@@ -103,10 +102,33 @@ document.getElementById("file-upload").onchange = function() {
     const reader = new FileReader();
     const file = this.files[0];
     reader.readAsArrayBuffer(file);
+
+    intersectionsData.style.visibility = "hidden";
+    points.clear();
+
     reader.onload = () => {
-        mesh.update(gl, file.name, reader.result);
+        mesh.update(gl, programInfo, file.name, reader.result);
         paint();
     };
+}
+
+
+function findIntersections() {
+    const ray = camera.eyeRay();
+
+    const start = performance.now();
+    const intersections = ray.intersects_tree(mesh.kdtree);
+    const timeSpent = toFixed(performance.now() - start, 3);
+
+    let data = [
+        `Position(${toFixed(camera.pos[0])}, ${toFixed(camera.pos[1])}, ${toFixed(camera.pos[2])})`,
+        `Direction(${toFixed(camera.front[0])}, ${toFixed(camera.front[1])}, ${toFixed(camera.front[2])})`,
+        `Found: ${intersections.size()} (${timeSpent} ms)`,
+    ];
+    data.push(...points.update(gl, programInfo, intersections))
+
+    intersectionsData.innerHTML = data.join("\n");
+    intersectionsData.style.visibility = "visible";
 }
 
 
@@ -127,7 +149,6 @@ function initializeGL() {
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
 
     const texCanvas = document.createElement("canvas")
     texCanvas.width = 256
@@ -165,17 +186,15 @@ function paint() {
     if (mesh.isLoaded()) {
         mesh.draw(gl);
 
-        if (pointsVAO) {
-            gl.bindVertexArray(pointsVAO);
-            twgl.drawBufferInfo(gl, pointsBufferInfo, gl.POINTS);
+        if (!points.isEmpty()) {
+            points.draw(gl);
         }
     }
 }
 
 
 function resizeCanvas() {
-    canvas.width = canvas.clientWidth;
-    canvas.height = canvas.clientHeight * 0.95;
+    twgl.resizeCanvasToDisplaySize(canvas)
     gl.viewport(0, 0, canvas.width, canvas.height);
     camera.resize(canvas.width, canvas.height);
 }

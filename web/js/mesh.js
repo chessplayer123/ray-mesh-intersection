@@ -6,7 +6,7 @@ class Mesh {
         this.kdtree = null;
     }
 
-    update(gl, filename, data) {
+    update(gl, programInfo, filename, data) {
         this.mesh = Module.readMesh(filename, data);
 
         let texCoords = [];
