@@ -8,8 +8,8 @@
 #include <time.h>
 
 #include "rmilib/ray.hpp"
-#include "rmilib/parallel_algos.hpp"
-#include "rmilib/kd_tree.hpp"
+#include "rmilib/parallel_algos.hpp" 
+#include "rmilib/tree.hpp"
 #include "rmilib/reader.hpp"
 
 
@@ -43,15 +43,64 @@ std::string concat(const Args&... args) {
 }
 
 
+template<int N>
+void sync_tree_benchmark(
+    Tree<TriangularMesh, N>& tree,
+    SampleGenerator& generator
+) {
+    generator.reset();
+    BENCHMARK_ADVANCED(concat("Sync Tree<", N, "> search "))(auto meter) {
+        auto ray = generator.next_ray();
+        meter.measure([&ray, &tree] { return ray.intersects(tree); });
+    };
+}
+
+
+template<int N>
+void omp_tree_benchmark(
+    Tree<TriangularMesh, N>& tree,
+    SampleGenerator& generator,
+    int threads_count
+) {
+    #ifdef RMI_INCLUDE_OMP 
+    generator.reset(); 
+    BENCHMARK_ADVANCED(concat( 
+        "OMP (", threads_count, " threads) Tree<", N, "> search "
+    ))(auto meter) { 
+        auto ray = generator.next_ray(); 
+        meter.measure([&ray, &tree, threads_count] { 
+            return parallel_intersects_omp(ray, tree, threads_count); 
+        }); 
+    }; 
+    #endif 
+}
+
+
+template<int N>
+void pool_tree_benchmark(
+    Tree<TriangularMesh, N>& tree,
+    SampleGenerator& generator,
+    int threads_count
+) {
+    #ifdef RMI_INCLUDE_POOL 
+    generator.reset(); 
+    BENCHMARK_ADVANCED(concat( 
+        "Thread pool (", threads_count, " threads) Tree<", N, "> search "
+    ))(auto meter) { 
+        auto ray = generator.next_ray(); 
+        meter.measure([&ray, &tree, threads_count] { 
+            return parallel_intersects_pool(ray, tree, threads_count); 
+        }); 
+    }; 
+    #endif 
+}
+
+
 TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
-    constexpr int threads_count = 2;
-    constexpr int depth = 16;
     std::string filename = "../../data/urn.stl";
 
     SampleGenerator generator(354238);
     TriangularMesh mesh = read_raw_triangular_mesh<double, size_t>(filename);
-    auto kdtree = KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end(), depth);
-
 
     generator.reset();
     BENCHMARK_ADVANCED(concat("Linear search ", mesh.size()))(auto meter) {
@@ -60,34 +109,21 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
     };
 
 
-    generator.reset();
-    BENCHMARK_ADVANCED(concat("Sync K-D Tree search ", mesh.size()))(auto meter) {
-        auto ray = generator.next_ray();
-        meter.measure([&ray, &kdtree] { return ray.intersects(kdtree); });
-    };
+    constexpr int threads_count = 2;
+    constexpr int depth = 16;
+    auto kdtree = KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end(), depth);
+    auto quadtree = Quadtree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end(), depth);
+    auto octree = Octree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end(), depth);
 
+    sync_tree_benchmark(kdtree, generator);
+    sync_tree_benchmark(quadtree, generator);
+    sync_tree_benchmark(octree, generator);
 
-#ifdef RMI_INCLUDE_OMP
-    generator.reset();
-    BENCHMARK_ADVANCED(concat(
-        "OMP (", threads_count, " threads) K-D Tree search ", mesh.size()
-    ))(auto meter) {
-        auto ray = generator.next_ray();
-        meter.measure([&ray, &kdtree, threads_count] {
-            return parallel_intersects_omp(ray, kdtree, threads_count);
-        });
-    };
-#endif
+    omp_tree_benchmark(kdtree, generator, threads_count);
+    omp_tree_benchmark(quadtree, generator, threads_count);
+    omp_tree_benchmark(octree, generator, threads_count);
 
-#ifdef RMI_INCLUDE_POOL
-    generator.reset();
-    BENCHMARK_ADVANCED(concat(
-        "Thread pool (", threads_count, " threads) K-D Tree search ", mesh.size()
-    ))(auto meter) {
-        auto ray = generator.next_ray();
-        meter.measure([&ray, &kdtree, threads_count] {
-            return parallel_intersects_pool(ray, kdtree, threads_count);
-        });
-    };
-#endif
+    pool_tree_benchmark(kdtree, generator, threads_count);
+    pool_tree_benchmark(quadtree, generator, threads_count);
+    pool_tree_benchmark(octree, generator, threads_count);
 }

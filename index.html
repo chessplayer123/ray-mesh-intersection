@@ -10,15 +10,37 @@
         <canvas id="canvas"></canvas>
 
         <div class="info-box" id="help-message">
-<pre><b>Left click on canvas</b> to start movement
+<pre class="row"><b>Left click on canvas</b> to start movement
 <b>wasd</b> to move around
 <b>Space</b> to move up
 <b>Shift</b> to move down
-<b>q</b> to cast a ray</pre>
+<b>Left Click</b> to cast a ray</pre>
 
-            <label for="file-upload" class="upload-button">
+            <div class="row" style="display: flex;">
+                <input id="threads-count" type="range" min="1" max="8" step="1" value="2" oninput="this.nextElementSibling.value = this.value + ' thread(-s)'"/>
+                <output>2 thread(-s)</output>
+            </div>
+
+            <div class="row" style="display: flex; justify-content: space-around; gap: 5px;">
+                <span class="radio-option">
+                    <input id="kdtree-option" class="radio-input" type="radio" name="tree" checked="checked" value=1 onclick="onRadioChanged(this);"/>
+                    <label for="kdtree-option" class="radio-label">kd-tree</label>
+                </span>
+
+                <span class="radio-option">
+                    <input id="quadtree-option" class="radio-input" type="radio" name="tree" value=2 onclick="onRadioChanged(this);"/>
+                    <label for="quadtree-option" class="radio-label">quadtree</label>
+                </span>
+
+                <span class="radio-option">
+                    <input id="octree-option" class="radio-input" type="radio" name="tree" value=3 onclick="onRadioChanged(this);"/>
+                    <label for="octree-option" class="radio-label">octree</label>
+                </span>
+            </div>
+
+            <label for="file-upload" class="row upload-button">
                 <input type="file" id="file-upload" accept=".stl,.obj,.ply"/>
-                Upload 📁 <i>(stl, obj, ply)</i>
+                Upload 📁 <i>(<= 512MB) (stl, obj, ply)</i>
             </label>
         </div>
 

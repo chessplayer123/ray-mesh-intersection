@@ -6,7 +6,7 @@
 
 #include "vector.hpp"
 #include "aabbox.hpp"
-#include "kd_tree.hpp"
+#include "tree.hpp"
 #include "mesh.hpp"
 
 
@@ -38,15 +38,15 @@ public:
         float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
 
-    template<typename mesh_t>
+    template<typename T, int N>
     std::vector<Vector3<float_t>> intersects(
-        const KDTree<mesh_t>& tree,
+        const Tree<T, N>& tree,
         float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
 private:
-    template<typename mesh_t>
+    template<typename T, int N>
     void recursive_intersects(
-        const typename KDTree<mesh_t>::iterator iter,
+        const typename Tree<T, N>::Node& iter,
         std::vector<Vector3<float_t>>& output,
         float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
@@ -102,45 +102,42 @@ std::optional<Vector3<float_t>> Ray<float_t>::intersects(
 
 
 template<typename float_t>
-template<typename mesh_t>
+template<typename T, int N>
 void Ray<float_t>::recursive_intersects(
-    const typename KDTree<mesh_t>::iterator iter,
+    const typename Tree<T, N>::Node& node,
     std::vector<Vector3<float_t>>& output,
     float_t epsilon
 ) const {
-    if (iter.is_leaf()) {
-        auto [begin, end] = iter.triangles();
-        for (auto cur = begin; cur != end; ++cur) {
-            auto intersection = intersects<mesh_t>(*cur, epsilon);
+    if (node.is_leaf()) {
+        for (const auto& cur : node.triangles()) {
+            auto intersection = intersects<T>(cur, epsilon);
             if (intersection.has_value()) {
                 output.push_back(intersection.value());
             }
         }
     } else {
-        if (auto left = iter.left(); intersects(left.box())) {
-            recursive_intersects<mesh_t>(left, output, epsilon);
-        }
-
-        if (auto right = iter.right(); intersects(right.box())) {
-            recursive_intersects<mesh_t>(right, output, epsilon);
+        for (const auto& child : node.child_nodes()) {
+            if (intersects(child.box())) {
+                recursive_intersects<T, N>(child, output, epsilon);
+            }
         }
     }
 }
 
 
 template<typename float_t>
-template<typename mesh_t>
+template<typename T, int N>
 std::vector<Vector3<float_t>> Ray<float_t>::intersects(
-    const KDTree<mesh_t>& tree,
+    const Tree<T, N>& tree,
     float_t epsilon
 ) const {
-    auto iter = tree.top();
-    if (!intersects(iter.box())) {
+    const typename Tree<T, N>::Node& node = tree.top();
+    if (!intersects(node.box())) {
         return {};
     }
 
     std::vector<Vector3<float_t>> output;
-    recursive_intersects<mesh_t>(iter, output, epsilon);
+    recursive_intersects<T, N>(node, output, epsilon);
     return output;
 }
 

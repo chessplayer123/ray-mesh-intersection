@@ -34,6 +34,12 @@ pre {
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
+    z-index: 1;
+}
+
+.row {
+    margin-top: 10px;
+    margin-bottom: 10px;
 }
 
 .info-box {
@@ -45,9 +51,38 @@ pre {
     padding: 16px;
     border-radius: 8px;
     visibility: hidden;
+    display: flex;
+
+    flex-direction: column;
 }
 
 #output {
     right: 1px;
     background: #1e2328;
+}
+
+#threads-count {
+    flex-grow: 1;
+    outline: none;
+    accent-color: #fed053;
+}
+
+.radio-input {
+    accent-color: #fed053;
+}
+
+.radio-option {
+    width: 100%;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: row;
+    text-align: center;
+    background: #2a2e34;
+}
+
+.radio-label {
+    cursor: pointer;
+    user-select: none;
+    display: block;
+    width: 100%;
 }

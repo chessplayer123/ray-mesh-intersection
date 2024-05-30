@@ -1,7 +1,7 @@
 #define CATCH_CONFIG_ENABLE_BENCHMARKING
 #include <catch2/catch.hpp>
 #include <fstream>
-#include "rmilib/kd_tree.hpp"
+#include "rmilib/tree.hpp"
 #include "rmilib/reader.hpp"
 
 

@@ -1,9 +1,10 @@
 const canvas = document.getElementById("canvas");
 const infoField = document.getElementById("help-message");
 const intersectionsData = document.getElementById("app-data");
+const threadsCountSlider = document.getElementById("threads-count");
 
 const [gl, programInfo] = initializeGL(canvas);
-const mesh = new Mesh(gl);
+const mesh = new Mesh(gl, parseInt(document.querySelector('input[name="tree"]:checked').value));
 const camera = new Camera();
 const points = new Points();
 
@@ -17,6 +18,11 @@ let moveForward = 0;
 
 function toFixed(num, digitsCount=2) {
     return Number(num).toFixed(digitsCount);
+}
+
+
+function onRadioChanged(option) {
+    mesh.setTreeType(parseInt(option.value));
 }
 
 
@@ -34,8 +40,10 @@ Module.onRuntimeInitialized = () => {
 
 
 canvas.onclick = () => {
-    if (mesh.isLoaded()) {
+    if (mesh.isLoaded() && document.pointerLockElement != canvas) {
         canvas.requestPointerLock();
+    } else {
+        findIntersections();
     }
 }
 
@@ -67,7 +75,6 @@ onkeydown = (event) => {
     }
 
     switch (event.code) {
-        case "KeyQ":      findIntersections();      break;
         case "KeyW":      moveForward =  stepUnits; break;
         case "KeyS":      moveForward = -stepUnits; break;
         case "KeyA":      moveLeft    =  stepUnits; break;
@@ -114,14 +121,18 @@ document.getElementById("file-upload").onchange = function() {
 function findIntersections() {
     const ray = camera.eyeRay();
 
-    const start = performance.now();
-    const intersections = ray.intersects_tree(mesh.kdtree);
-    const timeSpent = toFixed(performance.now() - start, 3);
+    let start = performance.now();
+    let intersections = mesh.intersects(ray);
+    const seqTimeSpent = toFixed(performance.now() - start, 3);
+
+    start = performance.now();
+    mesh.par_intersects(ray, parseInt(threadsCountSlider.value));
+    const parTimeSpent = toFixed(performance.now() - start, 3);
 
     let data = [
         `Position(${toFixed(camera.pos[0])}, ${toFixed(camera.pos[1])}, ${toFixed(camera.pos[2])})`,
         `Direction(${toFixed(camera.front[0])}, ${toFixed(camera.front[1])}, ${toFixed(camera.front[2])})`,
-        `Found: ${intersections.size()} (${timeSpent} ms)`,
+        `Found: ${intersections.size()} (${seqTimeSpent} ms (seq), ${parTimeSpent} ms (par))`,
     ];
     data.push(...points.update(gl, programInfo, intersections))
 

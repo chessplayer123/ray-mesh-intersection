@@ -2,19 +2,23 @@
 
 #include <thread>
 
-#include "kd_tree.hpp"
+#include "tree.hpp"
 #include "wsq.hpp"
 #include "ray.hpp"
 
 
-template<typename T>
+template<typename T, int N>
 class ThreadPool {
 public:
-    typedef typename KDTree<T>::iterator Iterator;
+    typedef typename Tree<T, N>::Node Node;
     typedef typename T::float_t float_t;
     typedef typename T::index_t index_t;
 
-    ThreadPool(const Ray<float_t>& ray, Iterator root, int threads_count):
+    ThreadPool(
+        const Ray<float_t>& ray,
+        const Node* root,
+        int threads_count
+    ):
         threads(threads_count), queues(threads_count),  results(threads_count),
         counter(0), threads_count(threads_count), ray(ray)
     {
@@ -34,11 +38,11 @@ public:
         return result;
     }
 private:
-    void distribute_load(Iterator root) {
-        queues[0].push(std::move(root));
+    void distribute_load(const Node* root) {
+        queues[0].push(root);
     }
 
-    std::optional<Iterator> pop_node(int thread_id) {
+    std::optional<const Node*> pop_node(int thread_id) {
         auto node = queues[thread_id].pop();
         if (node) {
             return node;
@@ -58,15 +62,14 @@ private:
     }
 
     void worker_thread(int thread_id) {
-        std::optional<Iterator> next = pop_node(thread_id);
+        std::optional<const Node*> next = pop_node(thread_id);
 
         while(next) {
-            Iterator cur = next.value();
+            const Node* cur = next.value();
 
-            if (cur.is_leaf()) {
-                auto [begin, end] = cur.triangles();
-                for (auto& cur = begin; cur != end; ++cur) {
-                    auto intersection = ray.template intersects<T>(*cur);
+            if (cur->is_leaf()) {
+                for (const auto& triangle : cur->triangles()) {
+                    auto intersection = ray.template intersects<T>(triangle);
                     if (intersection.has_value()) {
                         results[thread_id].push_back(intersection.value());
                     }
@@ -75,17 +78,13 @@ private:
             } else {
                 next = std::nullopt;
 
-                if (auto left = cur.left(); ray.intersects(left.box())) {
-                    next = left;
-                }
-
-                if (auto right = cur.right(); ray.intersects(right.box())) {
-                    if (next) {
-                        queues[thread_id].push(std::move(right));
-                    } else {
-                        next = right;
+                for (const auto& child : cur->child_nodes()) {
+                    if (ray.intersects(child.box())) {
+                        if (next) queues[thread_id].push(&child);
+                        else next = &child;
                     }
-                } else if (!next) {
+                }
+                if (!next) {
                     next = pop_node(thread_id);
                 }
             }
@@ -93,7 +92,7 @@ private:
     }
 
     std::vector<std::thread> threads;
-    std::vector<WorkStealingQueue<Iterator>> queues;
+    std::vector<WorkStealingQueue<const Node*>> queues;
     std::vector<std::vector<Vector3<float_t>>> results;
 
     std::atomic_int counter;
