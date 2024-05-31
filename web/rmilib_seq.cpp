@@ -29,11 +29,6 @@ std::vector<Vector3f> ray_intersects_tree(const Ray<float>& ray, const Tree<WebG
     return ray.intersects(tree);
 }
 
-template<int N>
-std::vector<Vector3f> ray_par_intersects_tree(const Ray<float>& ray, const Tree<WebGLMesh, N>& tree, int threads_count) {
-    return parallel_intersects_pool(ray, tree, threads_count);
-}
-
 emscripten::val get_indices(const WebGLMesh& mesh) {
     return emscripten::val(
         emscripten::typed_memory_view(mesh.indices().size(), mesh.indices().data())
@@ -66,13 +61,8 @@ EMSCRIPTEN_BINDINGS(module) {
     class_<Ray<float>>("Ray")
         .constructor<Vector3f, Vector3f>()
         .function("intersects_kdtree", &ray_intersects_tree<1>)
-        .function("par_intersects_kdtree", &ray_par_intersects_tree<1>)
-
         .function("intersects_quadtree", &ray_intersects_tree<2>)
-        .function("par_intersects_quadtree", &ray_par_intersects_tree<2>)
-
-        .function("intersects_octree", &ray_intersects_tree<3>)
-        .function("par_intersects_octree", &ray_par_intersects_tree<3>);
+        .function("intersects_octree", &ray_intersects_tree<3>);
 
     function("readMesh", &read_mesh_from_string);
 

@@ -1,9 +1,8 @@
-set(header_path "${RAY_MESH_INTERSECTION_SOURCE_DIR}/include/rmilib")
-
 file(GLOB header ${header_path}/*.hpp)
-file(GLOB src *.cpp)
+file(GLOB src ${src_path}/*.cpp)
 
 add_library(rmilib ${header} ${src})
+target_compile_options(rmilib PUBLIC "-fPIC")
 target_include_directories(
     rmilib
     PUBLIC $<BUILD_INTERFACE:${RAY_MESH_INTERSECTION_SOURCE_DIR}/include/>

@@ -1,7 +1,8 @@
 const canvas = document.getElementById("canvas");
-const infoField = document.getElementById("help-message");
+const menu = document.getElementById("menu");
 const intersectionsData = document.getElementById("app-data");
 const threadsCountSlider = document.getElementById("threads-count");
+let useParallel = false;
 
 const [gl, programInfo] = initializeGL(canvas);
 const mesh = new Mesh(gl, parseInt(document.querySelector('input[name="tree"]:checked').value));
@@ -21,6 +22,43 @@ function toFixed(num, digitsCount=2) {
 }
 
 
+function loadParallelLibVersion() {
+    const parLibScript = document.createElement("script");
+    parLibScript.src = "web/js/rmilib_par.js";
+    document.body.appendChild(parLibScript);
+
+    parLibScript.onload = () => {
+        const headersScript = document.createElement("script");
+        headersScript.src = "coi-serviceworker.min.js";
+        document.body.appendChild(headersScript);
+
+        headersScript.onload = () => {
+            useParallel = true;
+            Module.onRuntimeInitialized = start;
+        }
+    }
+}
+
+function loadSeqLibVersion() {
+    const libScript = document.createElement("script");
+    libScript.src = "web/js/rmilib_seq.js";
+    document.body.appendChild(libScript);
+
+    libScript.onload = () => {
+        useParallel = false;
+        Module.onRuntimeInitialized = start;
+    }
+}
+
+function start() {
+    document.getElementById("dialog").remove();
+    threadsCountSlider.disabled = !useParallel;
+    menu.style.visibility = "visible";
+    resizeCanvas();
+    gl.clear(gl.COLOR_BUFFER_BIT);
+}
+
+
 function onRadioChanged(option) {
     mesh.setTreeType(parseInt(option.value));
 }
@@ -32,17 +70,16 @@ window.onresize = () => {
 };
 
 
-Module.onRuntimeInitialized = () => {
-    infoField.style.visibility = "visible";
+Module => {
+    menu.style.visibility = "visible";
     resizeCanvas();
     gl.clear(gl.COLOR_BUFFER_BIT);
 };
 
-
 canvas.onclick = () => {
     if (mesh.isLoaded() && document.pointerLockElement != canvas) {
         canvas.requestPointerLock();
-    } else {
+    } else if (document.pointerLockElement == canvas) {
         findIntersections();
     }
 }
@@ -50,10 +87,10 @@ canvas.onclick = () => {
 
 document.onpointerlockchange = (event) => {
     if (document.pointerLockElement == canvas) {
-        infoField.style.visibility = "hidden";
+        menu.style.visibility = "hidden";
         window.requestAnimationFrame(update);
     } else {
-        infoField.style.visibility = "visible";
+        menu.style.visibility = "visible";
 
         moveForward = 0;
         moveUp = 0;
@@ -123,16 +160,19 @@ function findIntersections() {
 
     let start = performance.now();
     let intersections = mesh.intersects(ray);
-    const seqTimeSpent = toFixed(performance.now() - start, 3);
+    const seqTimeInfo = `${toFixed(performance.now() - start, 3)} ms`;
 
-    start = performance.now();
-    mesh.par_intersects(ray, parseInt(threadsCountSlider.value));
-    const parTimeSpent = toFixed(performance.now() - start, 3);
+    let parTimeInfo = "disabled";
+    if (useParallel) {
+        start = performance.now();
+        mesh.par_intersects(ray, parseInt(threadsCountSlider.value));
+        parTimeInfo = `${toFixed(performance.now() - start, 3)} ms`;
+    }
 
     let data = [
         `Position(${toFixed(camera.pos[0])}, ${toFixed(camera.pos[1])}, ${toFixed(camera.pos[2])})`,
         `Direction(${toFixed(camera.front[0])}, ${toFixed(camera.front[1])}, ${toFixed(camera.front[2])})`,
-        `Found: ${intersections.size()} (${seqTimeSpent} ms (seq), ${parTimeSpent} ms (par))`,
+        `Found: ${intersections.size()} (seq: ${seqTimeInfo}, par: ${parTimeInfo})`,
     ];
     data.push(...points.update(gl, programInfo, intersections))
 
