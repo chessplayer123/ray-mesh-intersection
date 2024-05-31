@@ -39,6 +39,7 @@ function loadParallelLibVersion() {
     }
 }
 
+
 function loadSeqLibVersion() {
     const libScript = document.createElement("script");
     libScript.src = "web/js/rmilib_seq.js";
@@ -49,6 +50,7 @@ function loadSeqLibVersion() {
         Module.onRuntimeInitialized = start;
     }
 }
+
 
 function start() {
     document.getElementById("dialog").remove();
@@ -69,12 +71,6 @@ window.onresize = () => {
     paint();
 };
 
-
-Module => {
-    menu.style.visibility = "visible";
-    resizeCanvas();
-    gl.clear(gl.COLOR_BUFFER_BIT);
-};
 
 canvas.onclick = () => {
     if (mesh.isLoaded() && document.pointerLockElement != canvas) {

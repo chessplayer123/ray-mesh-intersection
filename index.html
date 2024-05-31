@@ -10,7 +10,6 @@
         
         <dialog open id="dialog" class="center-message box">
             Allow parallel execution?
-            <br>
             <div class="hor-options">
                 <span class="label option" onclick="loadParallelLibVersion();">Yes</span>
                 <span class="label option" onclick="loadSeqLibVersion();">No</span>
@@ -50,6 +49,8 @@
                 <input type="file" id="file-upload" accept=".stl,.obj,.ply"/>
                 Upload 📁 <i>(<= 512MB) (stl, obj, ply)</i>
             </label>
+
+            <div class="row label option" onclick="location.reload();">Back</div>
         </div>
 
         <pre class="box" id="app-data"></pre>
