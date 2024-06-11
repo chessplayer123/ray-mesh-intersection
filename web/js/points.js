@@ -6,6 +6,10 @@ class Points {
     }
 
     draw(gl) {
+        twgl.setUniforms(programInfo, {
+            u_colorMult: [0.96, 0.3, 0.0, 1]
+        });
+
         gl.bindVertexArray(this.vao);
         twgl.drawBufferInfo(gl, this.bufferInfo, gl.POINTS);
     }

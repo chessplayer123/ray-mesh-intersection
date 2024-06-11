@@ -1,16 +1,18 @@
-const canvas = document.getElementById("canvas");
+const [canvas, ui] = document.getElementsByClassName("canvas");
+const uiContext = ui.getContext("2d");
 const menu = document.getElementById("menu");
 const intersectionsData = document.getElementById("app-data");
 const threadsCountSlider = document.getElementById("threads-count");
-let useParallel = false;
 
 const [gl, programInfo] = initializeGL(canvas);
 const mesh = new Mesh(gl, parseInt(document.querySelector('input[name="tree"]:checked').value));
 const camera = new Camera();
 const points = new Points();
 
-const maxFramerate = 120;
-const stepUnits = 0.2;
+const TARGET_FRAMERATE = 120;
+const STEP_UNITS = 0.2;
+
+let useParallel = false;
 let lastRenderTime = 0;
 let moveLeft = 0;
 let moveUp = 0;
@@ -19,6 +21,11 @@ let moveForward = 0;
 
 function toFixed(num, digitsCount=2) {
     return Number(num).toFixed(digitsCount);
+}
+
+
+function isViewerActive() {
+    return document.pointerLockElement == ui;
 }
 
 
@@ -52,12 +59,20 @@ function loadSeqLibVersion() {
 }
 
 
+// Remove dialog, lock or unlock slider and setup canvas
 function start() {
     document.getElementById("dialog").remove();
     threadsCountSlider.disabled = !useParallel;
     menu.style.visibility = "visible";
+
     resizeCanvas();
+
     gl.clear(gl.COLOR_BUFFER_BIT);
+
+    window.onresize = () => {
+        resizeCanvas();
+        paint();
+    };
 }
 
 
@@ -66,23 +81,17 @@ function onRadioChanged(option) {
 }
 
 
-window.onresize = () => {
-    resizeCanvas();
-    paint();
-};
-
-
-canvas.onclick = () => {
-    if (mesh.isLoaded() && document.pointerLockElement != canvas) {
-        canvas.requestPointerLock();
-    } else if (document.pointerLockElement == canvas) {
+ui.onclick = () => {
+    if (mesh.isLoaded() && !isViewerActive()) {
+        ui.requestPointerLock();
+    } else if (isViewerActive()) {
         findIntersections();
     }
 }
 
 
 document.onpointerlockchange = (event) => {
-    if (document.pointerLockElement == canvas) {
+    if (isViewerActive()) {
         menu.style.visibility = "hidden";
         window.requestAnimationFrame(update);
     } else {
@@ -95,25 +104,25 @@ document.onpointerlockchange = (event) => {
 };
 
 
-canvas.onmousemove = (event) => {
-    if (document.pointerLockElement == canvas) {
+ui.onmousemove = (event) => {
+    if (isViewerActive()) {
         camera.rotate(event.movementX, -event.movementY);
     }
 };
 
 
 onkeydown = (event) => {
-    if (document.pointerLockElement != canvas) {
+    if (!isViewerActive()) {
         return;
     }
 
     switch (event.code) {
-        case "KeyW":      moveForward =  stepUnits; break;
-        case "KeyS":      moveForward = -stepUnits; break;
-        case "KeyA":      moveLeft    =  stepUnits; break;
-        case "KeyD":      moveLeft    = -stepUnits; break;
-        case "Space":     moveUp      =  stepUnits; break;
-        case "ShiftLeft": moveUp      = -stepUnits; break;
+        case "KeyW":      moveForward =  STEP_UNITS; break;
+        case "KeyS":      moveForward = -STEP_UNITS; break;
+        case "KeyA":      moveLeft    =  STEP_UNITS; break;
+        case "KeyD":      moveLeft    = -STEP_UNITS; break;
+        case "Space":     moveUp      =  STEP_UNITS; break;
+        case "ShiftLeft": moveUp      = -STEP_UNITS; break;
     }
 };
 
@@ -136,7 +145,11 @@ onkeyup = (event) => {
 };
 
 
+// Read file, pass it's content to wasm, turn on loading animation
 document.getElementById("file-upload").onchange = function() {
+    const label = document.querySelector('label[for="file-upload"]');
+    label.classList.toggle("button-loading");
+
     const reader = new FileReader();
     const file = this.files[0];
     reader.readAsArrayBuffer(file);
@@ -145,8 +158,14 @@ document.getElementById("file-upload").onchange = function() {
     points.clear();
 
     reader.onload = () => {
-        mesh.update(gl, programInfo, file.name, reader.result);
-        paint();
+        try {
+            mesh.update(gl, programInfo, file.name, reader.result);
+            paint();
+        } catch(err) {
+            alert("Unsupported mesh format");
+        } finally {
+            label.classList.toggle("button-loading");
+        }
     };
 }
 
@@ -177,6 +196,7 @@ function findIntersections() {
 }
 
 
+// Load shaders, setup gl, create global texture
 function initializeGL(canvas) {
     let gl = canvas.getContext("webgl2") || canvas.getContext("experimental-webgl");
     if (!gl) {
@@ -195,17 +215,34 @@ function initializeGL(canvas) {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
+    // creating texture with visible outline and transparent body
+    const texCanvas = document.createElement("canvas")
+    texCanvas.width = 256
+    texCanvas.height = 256
+    const ctx = texCanvas.getContext("2d");
+    ctx.fillStyle = "white"
+    ctx.fillRect(0, 0, texCanvas.width, texCanvas.height)
+    ctx.clearRect(1, 1, 254, 254);
+
+    twgl.createTexture(gl, {
+        width: texCanvas.width, height: texCanvas.height,
+        format: gl.RGBA, internalFormat: gl.RGBA, type: gl.UNSIGNED_BYTE,
+        min: gl.NEAREST, mag: gl.NEAREST,
+        wrapS: gl.CLAMP_TO_EDGE, wrapT: gl.CLAMP_TO_EDGE,
+        src: ctx.getImageData(0, 0, texCanvas.width, texCanvas.height).data
+    });
+
     return [gl, programInfo]
 }
 
 
 function update(curTime) {
-    if (curTime - lastRenderTime >= 1000 / maxFramerate) {
+    if (curTime - lastRenderTime >= 1000 / TARGET_FRAMERATE) {
         camera.move(moveForward, moveLeft, moveUp);
         paint();
     }
     lastRenderTime = curTime;
-    if (document.pointerLockElement == canvas) {
+    if (isViewerActive()) {
         window.requestAnimationFrame(update);
     }
 }
@@ -228,5 +265,12 @@ function resizeCanvas() {
     twgl.resizeCanvasToDisplaySize(canvas)
     gl.viewport(0, 0, canvas.width, canvas.height);
     camera.resize(canvas.width, canvas.height);
+
+    // update center point
+    twgl.resizeCanvasToDisplaySize(ui)
+    uiContext.beginPath();
+        uiContext.fillStyle = "white";
+        uiContext.arc(ui.width / 2, ui.height / 2, 3, 0, 2 * Math.PI);
+    uiContext.fill();
 }
 

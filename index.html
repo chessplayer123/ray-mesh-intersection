@@ -6,11 +6,12 @@
         <title>Demo</title>
     </head>
     <body>
-        <canvas id="canvas"></canvas>
+        <canvas class="canvas"></canvas>
+        <canvas class="canvas"></canvas>
         
         <dialog open id="dialog" class="center-message box">
-            Allow parallel execution?
-            <div class="hor-options">
+            <pre style="text-align: center;" class="row">Allow parallel execution? <i>(experimental)</i></pre>
+            <div class="hor-options row">
                 <span class="label option" onclick="loadParallelLibVersion();">Yes</span>
                 <span class="label option" onclick="loadSeqLibVersion();">No</span>
             </div>
@@ -23,7 +24,7 @@
 <b>Shift</b> to move down
 <b>Left Click</b> to cast a ray</pre>
 
-            <div id="parallel-section" class="row option" style="display: flex; align-text: center;">
+            <div class="row option" style="display: flex; align-text: center;">
                 <input id="threads-count" disabled type="range" min="1" max="8" step="1" value="1" oninput="this.nextElementSibling.value = this.value + ' thread(-s)'"/>
                 <output>1 thread(-s)</output>
             </div>
@@ -47,7 +48,7 @@
 
             <label for="file-upload" class="row upload-button">
                 <input type="file" id="file-upload" accept=".stl,.obj,.ply"/>
-                Upload 📁 <i>(<= 512MB) (stl, obj, ply)</i>
+                <span class="file-upload-text">Upload 📁 <i>(<= 512MB) (stl, obj, ply)</i></span>
             </label>
 
             <div class="row label option" onclick="location.reload();">Back</div>
@@ -80,6 +81,7 @@
             in vec2 v_texcoord;
 
             uniform sampler2D u_texture;
+            uniform vec4 u_colorMult;
 
             out vec4 outColor;
 
@@ -88,7 +90,7 @@
                 if (color.a == 0.0) {
                     discard;
                 } else {
-                    outColor = color;
+                    outColor = color * u_colorMult;
                 }
             }
         </script>
