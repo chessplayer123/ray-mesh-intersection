@@ -20,8 +20,7 @@
         <div class="box center-message" id="menu">
 <pre class="row"><b>Left click on canvas</b> to start movement
 <b>wasd</b> to move around
-<b>Space</b> to move up
-<b>Shift</b> to move down
+<b>Space</b> / <b>Shift</b> to move up / down
 <b>Left Click</b> to cast a ray</pre>
 
             <div class="row option" style="display: flex; align-text: center;">
@@ -44,6 +43,11 @@
                     <input id="octree-option" type="radio" name="tree" value=3 onclick="onRadioChanged(this);"/>
                     <label for="octree-option" class="label">octree</label>
                 </span>
+            </div>
+
+            <div class="row option">
+                <input id="traversal-checkbox" type="checkbox"/>
+                <label for="traversal-checkbox" class="label">Visualize traversal <small>(<b>Arrow Up</b> to traverse)</small></label>
             </div>
 
             <label for="file-upload" class="row upload-button">
@@ -97,8 +101,9 @@
 
         <script src="web/js/twgl-full.min.js"></script>
         <script src="web/js/camera.js"></script>
-        <script src="web/js/points.js"></script>
+        <script src="web/js/intersection_handler.js"></script>
         <script src="web/js/mesh.js"></script>
+        <script src="web/js/tree.js"></script>
         <script src="web/js/viewer.js"></script>
     </body>
 </html>

@@ -9,42 +9,82 @@
 #include "rmilib/reader.hpp"
 #include "rmilib/parallel_algos.hpp"
 
+
 WebGLMesh read_mesh_from_string(const std::string& filename, const std::string& data) {
-    DataFormat format = define_format(filename);
     std::istringstream stream(data);
-    switch (format) {
+    switch (define_format(filename)) {
         case DataFormat::Ply: return read_raw_triangular_mesh_ply<float, unsigned int>(stream);
         case DataFormat::Stl: return read_raw_triangular_mesh_stl<float, unsigned int>(stream);
         case DataFormat::Obj: return read_raw_triangular_mesh_obj<float, unsigned int>(stream);
     }
 }
 
-template<int N>
-Tree<WebGLMesh, N> build_tree(WebGLMesh& mesh) {
-    return Tree<WebGLMesh, N>::for_mesh(mesh.begin(), mesh.end());
-}
 
 template<int N>
-std::vector<Vector3f> ray_intersects_tree(const Ray<float>& ray, const Tree<WebGLMesh, N>& tree) {
-    return ray.intersects(tree);
-}
+struct NodeWrapper {
+    inline bool is_leaf() const {
+        return node->is_leaf();
+    }
 
-emscripten::val get_indices(const WebGLMesh& mesh) {
-    return emscripten::val(
-        emscripten::typed_memory_view(mesh.indices().size(), mesh.indices().data())
-    );
-}
+    inline const AABBox<float>& box() const {
+        return node->box();
+    }
 
-emscripten::val get_vertices(const WebGLMesh& mesh) {
-    return emscripten::val(
-        emscripten::typed_memory_view(mesh.vertices().size(), mesh.vertices().data())
-    );
-}
+    inline std::vector<NodeWrapper> children() const {
+        const auto& child_nodes = node->child_nodes();
+        std::vector<NodeWrapper> res;
+        res.reserve(child_nodes.size());
+        for (const auto& child : child_nodes) {
+            res.emplace_back(&child);
+        }
+        return res;
+    }
+
+    NodeWrapper(const typename Tree<WebGLMesh, N>::Node* node): node(node) {
+    }
+
+    const typename Tree<WebGLMesh, N>::Node* node;
+};
+
 
 template<int N>
-std::vector<Vector3f> ray_par_intersects_tree(const Ray<float>& ray, const Tree<WebGLMesh, N>& tree, int threads_count) {
-    return parallel_intersects_pool(ray, tree, threads_count);
+void register_tree(const std::string& name) {
+    emscripten::class_<NodeWrapper<N>>((name + "Node").c_str())
+        .property("box",      &NodeWrapper<N>::box)
+        .function("children", &NodeWrapper<N>::children)
+        .function("isLeaf",   &NodeWrapper<N>::is_leaf)
+        .function("intersects",
+            +[](const NodeWrapper<N>& wrapper, const Ray<float>& ray) {
+                std::vector<Vector3f> output;
+                for (const auto& cur : wrapper.node->triangles()) {
+                    auto intersection = ray.intersects<WebGLMesh>(cur);
+                    if (intersection.has_value()) {
+                        output.push_back(intersection.value());
+                    }
+                }
+                return output;
+            }
+        );
+
+    emscripten::register_vector<NodeWrapper<N>>((name + "Nodes").c_str());
+
+    emscripten::class_<Tree<WebGLMesh, N>>(name.c_str())
+        .class_function("forMesh", +[](WebGLMesh& mesh) {
+            return Tree<WebGLMesh, N>::for_mesh(mesh.begin(), mesh.end());
+        })
+        .function("intersects",
+            +[](const Tree<WebGLMesh, N>& tree, const Ray<float>& ray) { return ray.intersects(tree); }
+        )
+        .function("par_intersects",
+            +[](const Tree<WebGLMesh, N>& tree, const Ray<float>& ray, int threads_count) {
+                return parallel_intersects_pool(ray, tree, threads_count);
+            }
+        )
+        .function("root", +[](const Tree<WebGLMesh, N>& tree) {
+            return NodeWrapper<N>(&tree.top());
+        });
 }
+
 
 EMSCRIPTEN_BINDINGS(module) {
     using namespace emscripten;
@@ -59,29 +99,26 @@ EMSCRIPTEN_BINDINGS(module) {
 
     class_<WebGLMesh>("Mesh")
         .property("size", &WebGLMesh::size)
-        .function("vertices", &get_vertices)
-        .function("indices", &get_indices);
+        .function("vertices", +[](const WebGLMesh& mesh) {
+            return val(typed_memory_view(mesh.vertices().size(), mesh.vertices().data()));
+        })
+        .function("indices", +[](const WebGLMesh& mesh) {
+            return val(typed_memory_view(mesh.indices().size(), mesh.indices().data()));
+        });
+
+    class_<AABBox<float>>("AABB")
+        .property("min", &AABBox<float>::min)
+        .property("max", &AABBox<float>::max)
+        .function("intersects",
+            +[](const AABBox<float>& aabb, const Ray<float>& ray) { return ray.intersects(aabb); }
+        );
 
     class_<Ray<float>>("Ray")
-        .constructor<Vector3f, Vector3f>()
-        .function("intersects_kdtree", &ray_intersects_tree<1>)
-        .function("par_intersects_kdtree", &ray_par_intersects_tree<1>)
-
-        .function("intersects_quadtree", &ray_intersects_tree<2>)
-        .function("par_intersects_quadtree", &ray_par_intersects_tree<2>)
-
-        .function("intersects_octree", &ray_intersects_tree<3>)
-        .function("par_intersects_octree", &ray_par_intersects_tree<3>);
+        .constructor<Vector3f, Vector3f>();
 
     function("readMesh", &read_mesh_from_string);
 
-    class_<KDTree<WebGLMesh>>("KDTree")
-        .class_function("forMesh", &build_tree<1>);
-
-    class_<Quadtree<WebGLMesh>>("Quadtree")
-        .class_function("forMesh", &build_tree<2>);
-
-    class_<Octree<WebGLMesh>>("Octree")
-        .class_function("forMesh", &build_tree<3>);
-
+    register_tree<1>("KDTree");
+    register_tree<2>("Quadtree");
+    register_tree<3>("Octree");
 }

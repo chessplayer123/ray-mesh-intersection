@@ -44,6 +44,7 @@ template<typename T, int N>
 class Tree {
 public:
     typedef typename T::iterator mesh_iterator;
+    static_assert(N > 0, "Number of nodes on one level should be more that zero");
 
     class Node;
 
@@ -92,23 +93,23 @@ public:
     Node& operator=(Node&&) = default;
     ~Node() = default;
 
-    constexpr Node(AABBox<typename T::float_t> box, Range range, std::vector<Node>&& children):
+    inline Node(AABBox<typename T::float_t> box, Range range, std::vector<Node>&& children):
         bounding_box(box), range(range), children(std::move(children)) {
     }
 
-    constexpr bool is_leaf() const {
+    inline bool is_leaf() const {
         return children.empty();
     }
 
-    constexpr const std::vector<Node>& child_nodes() const {
+    inline const std::vector<Node>& child_nodes() const {
         return children;
     }
 
-    constexpr const AABBox<typename T::float_t>& box() const {
+    inline const AABBox<typename T::float_t>& box() const {
         return bounding_box;
     }
 
-    constexpr const Range& triangles() const {
+    inline const Range& triangles() const {
         return range;
     }
 private:

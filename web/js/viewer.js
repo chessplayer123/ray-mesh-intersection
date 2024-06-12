@@ -1,13 +1,13 @@
 const [canvas, ui] = document.getElementsByClassName("canvas");
 const uiContext = ui.getContext("2d");
 const menu = document.getElementById("menu");
-const intersectionsData = document.getElementById("app-data");
-const threadsCountSlider = document.getElementById("threads-count");
+const checkbox = document.getElementById("traversal-checkbox");
 
 const [gl, programInfo] = initializeGL(canvas);
-const mesh = new Mesh(gl, parseInt(document.querySelector('input[name="tree"]:checked').value));
+const mesh = new Mesh(gl);
+const handler = new IntersectionHandler();
+const tree = new Tree(parseInt(document.querySelector('input[name="tree"]:checked').value));
 const camera = new Camera();
-const points = new Points();
 
 const TARGET_FRAMERATE = 120;
 const STEP_UNITS = 0.2;
@@ -17,11 +17,6 @@ let lastRenderTime = 0;
 let moveLeft = 0;
 let moveUp = 0;
 let moveForward = 0;
-
-
-function toFixed(num, digitsCount=2) {
-    return Number(num).toFixed(digitsCount);
-}
 
 
 function isViewerActive() {
@@ -43,6 +38,16 @@ function loadParallelLibVersion() {
             useParallel = true;
             Module.onRuntimeInitialized = start;
         }
+
+        headersScript.onerror = () => {
+            alert("Can't setup COOP/COEP");
+            location.reload();
+        }
+    }
+
+    parLibScript.onerror = () => {
+        alert("Can't load parallel lib version");
+        location.reload();
     }
 }
 
@@ -55,6 +60,10 @@ function loadSeqLibVersion() {
     libScript.onload = () => {
         useParallel = false;
         Module.onRuntimeInitialized = start;
+    }
+
+    libScript.onerror = () => {
+        alert("Can't load seq lib version");
     }
 }
 
@@ -77,7 +86,10 @@ function start() {
 
 
 function onRadioChanged(option) {
-    mesh.setTreeType(parseInt(option.value));
+    if (mesh.isLoaded()) {
+        tree.build(mesh, parseInt(option.value));
+        handler.clear();
+    }
 }
 
 
@@ -85,7 +97,12 @@ ui.onclick = () => {
     if (mesh.isLoaded() && !isViewerActive()) {
         ui.requestPointerLock();
     } else if (isViewerActive()) {
-        findIntersections();
+        const ray = camera.eyeRay();
+        if (checkbox.checked) {
+            handler.startTraversal(ray, tree);
+        } else {
+            handler.findIntersections(ray, tree);
+        }
     }
 }
 
@@ -117,6 +134,7 @@ onkeydown = (event) => {
     }
 
     switch (event.code) {
+        case "ArrowUp":   handler.traverse();        break;
         case "KeyW":      moveForward =  STEP_UNITS; break;
         case "KeyS":      moveForward = -STEP_UNITS; break;
         case "KeyA":      moveLeft    =  STEP_UNITS; break;
@@ -147,52 +165,31 @@ onkeyup = (event) => {
 
 // Read file, pass it's content to wasm, turn on loading animation
 document.getElementById("file-upload").onchange = function() {
+    const file = this.files[0];
+    if (!file) {
+        return;
+    }
+
     const label = document.querySelector('label[for="file-upload"]');
     label.classList.toggle("button-loading");
 
     const reader = new FileReader();
-    const file = this.files[0];
     reader.readAsArrayBuffer(file);
 
-    intersectionsData.style.visibility = "hidden";
-    points.clear();
+    handler.clear();
 
     reader.onload = () => {
         try {
             mesh.update(gl, programInfo, file.name, reader.result);
+            tree.build(mesh, parseInt(document.querySelector('input[name="tree"]:checked').value));
             paint();
         } catch(err) {
             alert("Unsupported mesh format");
+            console.error(err);
         } finally {
             label.classList.toggle("button-loading");
         }
     };
-}
-
-
-function findIntersections() {
-    const ray = camera.eyeRay();
-
-    let start = performance.now();
-    let intersections = mesh.intersects(ray);
-    const seqTimeInfo = `${toFixed(performance.now() - start, 3)} ms`;
-
-    let parTimeInfo = "disabled";
-    if (useParallel) {
-        start = performance.now();
-        mesh.par_intersects(ray, parseInt(threadsCountSlider.value));
-        parTimeInfo = `${toFixed(performance.now() - start, 3)} ms`;
-    }
-
-    let data = [
-        `Position(${toFixed(camera.pos[0])}, ${toFixed(camera.pos[1])}, ${toFixed(camera.pos[2])})`,
-        `Direction(${toFixed(camera.front[0])}, ${toFixed(camera.front[1])}, ${toFixed(camera.front[2])})`,
-        `Found: ${intersections.size()} (seq: ${seqTimeInfo}, par: ${parTimeInfo})`,
-    ];
-    data.push(...points.update(gl, programInfo, intersections))
-
-    intersectionsData.innerHTML = data.join("\n");
-    intersectionsData.style.visibility = "visible";
 }
 
 
@@ -253,10 +250,7 @@ function paint() {
     camera.prepareScene();
     if (mesh.isLoaded()) {
         mesh.draw(gl);
-
-        if (!points.isEmpty()) {
-            points.draw(gl);
-        }
+        handler.draw();
     }
 }
 
@@ -267,7 +261,7 @@ function resizeCanvas() {
     camera.resize(canvas.width, canvas.height);
 
     // update center point
-    twgl.resizeCanvasToDisplaySize(ui)
+    twgl.resizeCanvasToDisplaySize(ui);
     uiContext.beginPath();
         uiContext.fillStyle = "white";
         uiContext.arc(ui.width / 2, ui.height / 2, 3, 0, 2 * Math.PI);

@@ -20,6 +20,7 @@ input {
 
 .upload-button {
     display: block;
+    position: relative;
     padding: 3px;
     cursor: pointer;
     background: #2a2e34;
@@ -39,7 +40,7 @@ input {
     flex-direction: row;
 }
 
-#canvas {
+.canvas {
     position: fixed;
     width: 100%;
     height: 100%;
@@ -95,4 +96,39 @@ input {
     display: block;
     width: 100%;
     text-align: center;
+}
+
+.file-upload-text {
+    transition: all 0.1s;
+}
+
+.button-loading .file-upload-text  {
+    visibility: hidden;
+    opacity: 0;
+}
+
+.button-loading::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+    border: 4px solid transparent;
+    border-top-color: #fed053;
+    border-radius: 50%;
+    animation: button-loading-spinner 1s linear infinite;
+}
+
+@keyframes button-loading-spinner {
+    from {
+        transform: rotate(0turn);
+    }
+
+    to {
+        transform: rotate(1turn);
+    }
 }
