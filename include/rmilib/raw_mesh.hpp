@@ -1,18 +1,18 @@
 #pragma once
 
-#include "mesh.hpp"
+#include "rmi.h"
 
 template<typename float_t, typename index_t>
-class RawMesh: public Mesh<RawMesh<float_t, index_t>, float_t, index_t> {
+class RawMesh: public rmi::Mesh<RawMesh<float_t, index_t>, float_t, index_t> {
 public:
-    RawMesh(): Mesh<RawMesh, float_t, index_t>(0) {
+    RawMesh(): rmi::Mesh<RawMesh, float_t, index_t>(0) {
     }
 
     RawMesh(
         std::vector<float_t>&& coords,
         std::vector<index_t>&& indices
     ):
-        Mesh<RawMesh, float_t, index_t>(indices.size() / 3),
+        rmi::Mesh<RawMesh, float_t, index_t>(indices.size() / 3),
         m_size(indices.size() / 3),
         m_vertices(std::move(coords)),
         m_indices(std::move(indices))
@@ -20,9 +20,9 @@ public:
 
     // the only required method
     template<index_t vertex_num>
-    inline Vector3<float_t> v(index_t triangle_num) const {
+    inline rmi::Vector3<float_t> v(index_t triangle_num) const {
         index_t i = 3 * m_indices[3 * triangle_num + vertex_num];
-        return Vector3<float_t>(m_vertices[i + 0], m_vertices[i + 1], m_vertices[i + 2]);
+        return rmi::Vector3<float_t>(m_vertices[i + 0], m_vertices[i + 1], m_vertices[i + 2]);
     }
 
     index_t size() const {
