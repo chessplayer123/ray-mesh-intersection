@@ -3,6 +3,7 @@
 #include "rmilib/reader.hpp"
 #include "rmilib/rmi.hpp"
 
+
 TEST_CASE("Ply reader", "[reader]") {
     const std::string file_path = "../../data/bunny.ply";
     std::ifstream stream;
