@@ -14,7 +14,7 @@ MeshViewer::MeshViewer(QWidget* parent):
     QOpenGLWidget(parent),
     click_point(std::nullopt),
     always_find_intersections(true),
-    camera(Vector3d(10, 10, 10), width(), height())
+    camera(rmi::Vector3d(10, 10, 10), width(), height())
 {
     QTimer* timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &MeshViewer::updateFrame);
@@ -56,8 +56,8 @@ void MeshViewer::drawMesh() {
 QString prepareDescription(
     time_point<steady_clock> last_frame,
     size_t size,
-    const Vector3d& pos,
-    const Vector3d& dir,
+    const rmi::Vector3d& pos,
+    const rmi::Vector3d& dir,
     size_t intersections_count,
     const QString& intersection_time
 ) {
@@ -147,7 +147,7 @@ void MeshViewer::findIntersections() {
 
     #ifdef RMI_INCLUDE_OMP
         start = steady_clock::now();
-        intersections = parallel_intersects_omp(camera.eye_ray(), *tree, 2);
+        intersections = rmi::parallel_intersects_omp(camera.eye_ray(), *tree, 2);
         auto omp_time_delta = duration_cast<microseconds>(steady_clock::now() - start).count();
         intersection_time_spent += QString("\n    omp: %0 us (x %1)")
             .arg(omp_time_delta)
@@ -156,7 +156,7 @@ void MeshViewer::findIntersections() {
 
     #ifdef RMI_INCLUDE_POOL
         start = steady_clock::now();
-        intersections = parallel_intersects_pool(camera.eye_ray(), *tree, 2);
+        intersections = rmi::parallel_intersects_pool(camera.eye_ray(), *tree, 2);
         auto pool_time_delta = duration_cast<microseconds>(steady_clock::now() - start).count();
         intersection_time_spent += QString("\n    pool: %0 us (x %1)")
             .arg(pool_time_delta)
@@ -181,8 +181,8 @@ void MeshViewer::mouseMoveEvent(QMouseEvent* event) {
 
 void MeshViewer::setMesh(TriangularMesh&& new_mesh) {
     mesh = std::make_unique<TriangularMesh>(new_mesh);
-    tree = std::make_unique<KDTree<TriangularMesh>>(
-        KDTree<TriangularMesh>::for_mesh(mesh->begin(), mesh->end())
+    tree = std::make_unique<rmi::KDTree<TriangularMesh>>(
+        rmi::KDTree<TriangularMesh>::for_mesh(mesh->begin(), mesh->end())
     );
     updateFrame();
 }

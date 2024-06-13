@@ -1,10 +1,10 @@
 #pragma once
 
-#include "rmilib/ray.hpp"
+#include "rmilib/rmi.h"
 
 class Camera {
 public:
-    Camera(Vector3d pos, int width, int height):
+    Camera(rmi::Vector3d pos, int width, int height):
         pos(pos),
         left(0, 0, -1), up(0, 1, 0), front(1, 0, 0),
         yaw(0.0), pitch(0.0),
@@ -20,23 +20,23 @@ public:
     inline void move_up(double units) { pos += up * units; }
     inline void move_down(double units) { pos -= up * units; }
 
-    inline const Vector3d& direction() const { return front; }
-    inline const Vector3d& position() const { return pos; }
+    inline const rmi::Vector3d& direction() const { return front; }
+    inline const rmi::Vector3d& position() const { return pos; }
 
     void resize(int w, int h);
     void rotate(double yaw_degree, double pitch_degree);
 
     void setup() const;
 
-    Ray<double> eye_ray() const {
-        return Ray(pos, front);
+    rmi::Ray<double> eye_ray() const {
+        return rmi::Ray(pos, front);
     }
 private:
-    Vector3d pos;
+    rmi::Vector3d pos;
 
-    Vector3d left;
-    Vector3d up;
-    Vector3d front;
+    rmi::Vector3d left;
+    rmi::Vector3d up;
+    rmi::Vector3d front;
 
     double yaw;
     double pitch;

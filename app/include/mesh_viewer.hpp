@@ -3,7 +3,7 @@
 #include <optional>
 #include <QOpenGLWidget>
 #include <QMouseEvent>
-#include "rmilib/tree.hpp"
+#include "rmilib/rmi.h"
 #include "rmilib/raw_mesh.hpp"
 #include "camera.hpp"
 
@@ -27,10 +27,10 @@ private:
     void updateFrame();
 
     std::unique_ptr<TriangularMesh> mesh;
-    std::unique_ptr<KDTree<TriangularMesh>> tree;
+    std::unique_ptr<rmi::KDTree<TriangularMesh>> tree;
 
     std::optional<QPoint> click_point;
-    std::vector<Vector3d> intersections;
+    std::vector<rmi::Vector3d> intersections;
     QString intersection_time_spent;
     bool always_find_intersections;
 

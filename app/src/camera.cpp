@@ -10,12 +10,12 @@ void Camera::rotate(double yaw_degree, double pitch_degree) {
     pitch = std::max(-M_PI_2, std::min(pitch + pitch_rad, M_PI_2));
     yaw += yaw_rad;
 
-    front = Vector3d(
+    front = rmi::Vector3d(
         cos(yaw) * cos(pitch),
         sin(pitch),
         sin(yaw) * cos(pitch)
     ).ort();
-    left = Vector3d(cos(yaw - M_PI_2), 0, sin(yaw - M_PI_2)).ort();
+    left = rmi::Vector3d(cos(yaw - M_PI_2), 0, sin(yaw - M_PI_2)).ort();
     up = front.cross(left).ort();
 }
 
@@ -35,7 +35,7 @@ void Camera::setup() const {
         static_cast<double>(width) / static_cast<double>(height),
         .1, view_distance
     );
-    Vector3d center = pos + front;
+    rmi::Vector3d center = pos + front;
     gluLookAt(
         pos.x(), pos.y(), pos.z(),
         center.x(), center.y(), center.z(),
