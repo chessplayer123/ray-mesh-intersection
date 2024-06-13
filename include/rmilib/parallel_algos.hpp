@@ -2,7 +2,7 @@
 
 
 #ifdef RMI_INCLUDE_POOL
-#    include "rmi.h"
+#    include "rmi.hpp"
 #    include "wsq.hpp"
 #    include <thread>
 
@@ -123,7 +123,7 @@ std::vector<Vector3<typename T::float_t>> parallel_intersects_pool(
 
 
 #ifdef RMI_INCLUDE_OMP
-#    include "rmi.h"
+#    include "rmi.hpp"
 #    include <vector>
 #    include <omp.h>
 

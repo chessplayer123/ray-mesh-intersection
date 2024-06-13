@@ -3,7 +3,7 @@
 #include <optional>
 #include <QOpenGLWidget>
 #include <QMouseEvent>
-#include "rmilib/rmi.h"
+#include "rmilib/rmi.hpp"
 #include "rmilib/raw_mesh.hpp"
 #include "camera.hpp"
 

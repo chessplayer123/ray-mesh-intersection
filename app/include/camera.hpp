@@ -1,6 +1,6 @@
 #pragma once
 
-#include "rmilib/rmi.h"
+#include "rmilib/rmi.hpp"
 
 class Camera {
 public:

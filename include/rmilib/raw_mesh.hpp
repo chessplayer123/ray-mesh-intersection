@@ -1,6 +1,6 @@
 #pragma once
 
-#include "rmi.h"
+#include "rmi.hpp"
 
 template<typename float_t, typename index_t>
 class RawMesh: public rmi::Mesh<RawMesh<float_t, index_t>, float_t, index_t> {

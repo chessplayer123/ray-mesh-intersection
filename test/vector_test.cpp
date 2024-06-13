@@ -1,5 +1,5 @@
 #include <catch2/catch.hpp>
-#include "rmilib/rmi.h"
+#include "rmilib/rmi.hpp"
 
 
 TEST_CASE("Length method", "[vector]") {

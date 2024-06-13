@@ -7,7 +7,7 @@
 #include <fstream>
 #include <time.h>
 
-#include "rmilib/rmi.h"
+#include "rmilib/rmi.hpp"
 #include "rmilib/raw_mesh.hpp"
 #include "rmilib/reader.hpp"
 #include "rmilib/parallel_algos.hpp" 

@@ -2,7 +2,7 @@
 
 #include <sstream>
 #include <array>
-#include "rmilib/rmi.h"
+#include "rmilib/rmi.hpp"
 #include "rmilib/raw_mesh.hpp"
 
 #define EPSILON 0.00001
