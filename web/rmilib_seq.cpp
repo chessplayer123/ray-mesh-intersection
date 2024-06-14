@@ -7,7 +7,7 @@
 
 
 EMSCRIPTEN_BINDINGS(module) {
-    define_shared();
+    register_shared();
 
     register_tree<1>("KDTree");
     register_tree<2>("Quadtree");

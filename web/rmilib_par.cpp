@@ -4,7 +4,7 @@
 #include <sstream>
 
 #include "rmilib_shared.hpp"
-#include "rmilib/parallel_algos.hpp"
+#include "rmilib/rmi_parallel.hpp"
 
 
 template<int N>
@@ -13,12 +13,12 @@ std::vector<rmi::Vector3f> tree_par_intersects_ray(
     const rmi::Ray<float>& ray,
     int threads_count
 ) {
-    return rmi::parallel_intersects_pool(ray, tree, threads_count);
+    return rmi::parallel::pool_intersects(ray, tree, threads_count);
 }
 
 
 EMSCRIPTEN_BINDINGS(module) {
-    define_shared();
+    register_shared();
 
     register_tree<1>("KDTree")
         .function("par_intersects", &tree_par_intersects_ray<1>);
