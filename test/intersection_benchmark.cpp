@@ -7,10 +7,10 @@
 #include <fstream>
 #include <time.h>
 
-#include "rmilib/rmi.hpp"
 #include "rmilib/raw_mesh.hpp"
 #include "rmilib/reader.hpp"
-#include "rmilib/parallel_algos.hpp" 
+#include "rmilib/rmi.hpp"
+#include "rmilib/rmi_parallel.hpp" 
 
 
 class SampleGenerator {
@@ -69,7 +69,7 @@ void omp_tree_benchmark(
     ))(auto meter) { 
         auto ray = generator.next_ray(); 
         meter.measure([&ray, &tree, threads_count] { 
-            return rmi::parallel_intersects_omp(ray, tree, threads_count); 
+            return rmi::parallel::omp_intersects(ray, tree, threads_count); 
         }); 
     }; 
     #endif 
@@ -89,7 +89,7 @@ void pool_tree_benchmark(
     ))(auto meter) { 
         auto ray = generator.next_ray(); 
         meter.measure([&ray, &tree, threads_count] { 
-            return rmi::parallel_intersects_pool(ray, tree, threads_count); 
+            return rmi::parallel::pool_intersects(ray, tree, threads_count); 
         }); 
     }; 
     #endif 

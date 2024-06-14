@@ -1,5 +1,5 @@
 #include "mesh_viewer.hpp"
-#include "rmilib/parallel_algos.hpp"
+#include "rmilib/rmi_parallel.hpp"
 
 #include <QDebug>
 #include <QPainter>
@@ -147,7 +147,7 @@ void MeshViewer::findIntersections() {
 
     #ifdef RMI_INCLUDE_OMP
         start = steady_clock::now();
-        intersections = rmi::parallel_intersects_omp(camera.eye_ray(), *tree, 2);
+        intersections = rmi::parallel::omp_intersects(camera.eye_ray(), *tree, 2);
         auto omp_time_delta = duration_cast<microseconds>(steady_clock::now() - start).count();
         intersection_time_spent += QString("\n    omp: %0 us (x %1)")
             .arg(omp_time_delta)
@@ -156,7 +156,7 @@ void MeshViewer::findIntersections() {
 
     #ifdef RMI_INCLUDE_POOL
         start = steady_clock::now();
-        intersections = rmi::parallel_intersects_pool(camera.eye_ray(), *tree, 2);
+        intersections = rmi::parallel::pool_intersects(camera.eye_ray(), *tree, 2);
         auto pool_time_delta = duration_cast<microseconds>(steady_clock::now() - start).count();
         intersection_time_spent += QString("\n    pool: %0 us (x %1)")
             .arg(pool_time_delta)
