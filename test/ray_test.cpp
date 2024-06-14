@@ -3,6 +3,7 @@
 #include <sstream>
 #include <array>
 #include "rmilib/rmi.hpp"
+#include "rmilib/rmi_parallel.hpp"
 #include "rmilib/raw_mesh.hpp"
 
 #define EPSILON 0.00001
@@ -166,6 +167,46 @@ TEST_CASE("Ray and triangular mesh intersection methods", "[ray][mesh][kdtree]")
 
         WHEN("Finding intersections with kdtree") {
             auto kdtree = rmi::KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
+            auto actual_intersections = ray.intersects(kdtree);
+            REQUIRE_THAT(
+                actual_intersections,
+                Catch::Matchers::UnorderedEquals(expected_intersections)
+            );
+        }
+
+        #ifdef RMI_INCLUDE_POOL
+        WHEN("Finding intersections with pool parallel algorithm") {
+            auto kdtree = rmi::KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
+            auto actual_intersections = rmi::parallel::pool_intersects(ray, kdtree, 2);
+            REQUIRE_THAT(
+                actual_intersections,
+                Catch::Matchers::UnorderedEquals(expected_intersections)
+            );
+        }
+        #endif
+
+        #ifdef RMI_INCLUDE_OMP
+        WHEN("Finding intersections with omp parallel algorithm") {
+            auto kdtree = rmi::KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
+            auto actual_intersections = rmi::parallel::omp_intersects(ray, kdtree, 2);
+            REQUIRE_THAT(
+                actual_intersections,
+                Catch::Matchers::UnorderedEquals(expected_intersections)
+            );
+        }
+        #endif
+
+        WHEN("Finding intersections with quadtree") {
+            auto kdtree = rmi::Quadtree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
+            auto actual_intersections = ray.intersects(kdtree);
+            REQUIRE_THAT(
+                actual_intersections,
+                Catch::Matchers::UnorderedEquals(expected_intersections)
+            );
+        }
+
+        WHEN("Finding intersections with octree") {
+            auto kdtree = rmi::Octree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
             auto actual_intersections = ray.intersects(kdtree);
             REQUIRE_THAT(
                 actual_intersections,
