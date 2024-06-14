@@ -5,8 +5,49 @@
 #    include "rmi.hpp"
 #    include "wsq.hpp"
 #    include <thread>
+namespace rmi::parallel {
 
-namespace rmi {
+template<typename T, int N>
+std::vector<Vector3<typename T::float_t>> pool_intersects(
+    const Ray<typename T::float_t>& ray,
+    const Tree<T, N>& tree,
+    int threads_count
+);
+
+}
+#endif // RMI_INCLUDE_POOL
+
+
+#ifdef RMI_INCLUDE_OMP
+#    include "rmi.hpp"
+#    include <vector>
+#    include <omp.h>
+namespace rmi::parallel {
+
+template<typename T, int N>
+std::vector<Vector3<typename T::float_t>> omp_intersects(
+    const Ray<typename T::float_t>& ray,
+    const Tree<T, N>& tree,
+    int threads_count,
+    double epsilon = std::numeric_limits<double>::epsilon()
+);
+
+
+template<typename T, int N>
+Tree<T, N> omp_build(
+    typename T::iterator begin,
+    typename T::iterator end,
+    int threads_count,
+    int depth_limit = 16
+);
+
+}
+#endif // RMI_INCLUDE_OMP
+
+
+
+#ifdef RMI_INCLUDE_POOL
+namespace rmi::parallel {
 
 template<typename T, int N>
 class ThreadPool {
@@ -103,7 +144,7 @@ private:
 };
 
 template<typename T, int N>
-std::vector<Vector3<typename T::float_t>> parallel_intersects_pool(
+std::vector<Vector3<typename T::float_t>> pool_intersects(
     const Ray<typename T::float_t>& ray,
     const Tree<T, N>& tree,
     int threads_count
@@ -126,11 +167,10 @@ std::vector<Vector3<typename T::float_t>> parallel_intersects_pool(
 #    include "rmi.hpp"
 #    include <vector>
 #    include <omp.h>
-
-namespace rmi {
+namespace rmi::parallel {
 
 template<typename T, int N>
-void parallel_recursive_intersects(
+void omp_recursive_intersects(
     const Ray<typename T::float_t>& ray,
     const typename Tree<T, N>::Node* node,
     std::vector<Vector3<typename T::float_t>>& output,
@@ -140,28 +180,28 @@ void parallel_recursive_intersects(
         for (const auto& cur : node->triangles()) {
             auto intersection = ray.template intersects<T>(cur, epsilon);
             if (intersection.has_value()) {
+                #pragma omp critical
                 output.push_back(intersection.value());
             }
         }
     } else {
+        #pragma omp taskloop shared(output)
         for (const auto& child : node->child_nodes()) {
             if (ray.intersects(child.box())) {
                 const auto* child_ptr = &child;
-                #pragma omp task shared(output)
-                parallel_recursive_intersects<T, N>(ray, child_ptr, output, epsilon);
+                omp_recursive_intersects<T, N>(ray, child_ptr, output, epsilon);
             }
         }
-        #pragma omp taskwait
     }
 }
 
 
 template<typename T, int N>
-std::vector<Vector3<typename T::float_t>> parallel_intersects_omp(
+std::vector<Vector3<typename T::float_t>> omp_intersects(
     const Ray<typename T::float_t>& ray,
     const Tree<T, N>& tree,
     int threads_count,
-    double epsilon = std::numeric_limits<double>::epsilon()
+    double epsilon
 ) {
     const auto& root = tree.top();
     if (!ray.intersects(root.box())) {
@@ -172,9 +212,60 @@ std::vector<Vector3<typename T::float_t>> parallel_intersects_omp(
 
     #pragma omp parallel shared(output) num_threads(threads_count)
     #pragma omp single
-    parallel_recursive_intersects<T, N>(ray, &root, output, epsilon);
+    omp_recursive_intersects<T, N>(ray, &root, output, epsilon);
 
     return output;
+}
+
+
+template<typename T, int N>
+typename Tree<T, N>::Node omp_recursive_build(
+    Range<typename T::iterator> range,
+    int depth_limit
+) {
+    if (depth_limit <= 0 || range.length() <= (1 << N)) {
+        return typename Tree<T, N>::Node(
+            get_bounding_box<T>(range),
+            range,
+            std::vector<typename Tree<T, N>::Node>()
+        );
+    }
+
+    auto subranges = rmi::split<T, N>(range, depth_limit);
+    std::vector<typename Tree<T, N>::Node> children;
+    AABBox<typename T::float_t> aabb;
+
+    #pragma omp taskloop shared(children, aabb, subranges)
+    for (const auto& subrange : subranges) {
+        auto child = omp_recursive_build<T, N>(subrange, depth_limit - 1);
+        #pragma omp critical
+        {
+            aabb += child.box();
+            children.push_back(std::move(child));
+        }
+    }
+
+    return typename Tree<T, N>::Node(aabb, range, std::move(children));
+}
+
+
+template<typename T, int N>
+Tree<T, N> omp_build(
+    typename T::iterator begin,
+    typename T::iterator end,
+    int threads_count,
+    int depth_limit
+) {
+    typename Tree<T, N>::Node node(
+        AABBox<typename T::float_t>(),
+        Range(end, end),
+        std::vector<typename Tree<T, N>::Node>()
+    );
+    #pragma omp parallel num_threads(threads_count)
+    #pragma omp single
+    node = std::move(omp_recursive_build<T, N>(Range(begin, end), depth_limit));
+
+    return Tree<T, N>(std::move(node));
 }
 
 } // namespace rmi

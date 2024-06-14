@@ -70,8 +70,10 @@ class Range {
 public:
     Range(T begin, T end): m_begin(begin), m_end(end) {}
 
-    inline T begin() const { return m_begin; }
-    inline T end()   const { return m_end; }
+    inline T    begin()  const { return m_begin; }
+    inline T    end()    const { return m_end; }
+    inline auto length() const { return std::distance(m_begin, m_end); }
+
 private:
     T m_begin;
     T m_end;
@@ -85,8 +87,6 @@ public:
 
     class Node {
     public:
-        friend Tree;
-
         Node(const Node&)            = delete;
         Node()                       = delete;
         Node& operator=(const Node&) = delete;
@@ -101,7 +101,7 @@ public:
             std::vector<Node>&& children
         ): bounding_box(box), range(range), children(std::move(children)) {}
 
-        static Node build(typename T::iterator begin, typename T::iterator end, int depth_limit);
+        static Node build(Range<typename T::iterator> range, int depth_limit);
 
         inline bool                               is_leaf()     const { return children.empty(); }
         inline const std::vector<Node>&           child_nodes() const { return children; }
@@ -113,14 +113,14 @@ public:
         std::vector<Node> children;
     };
 
+    Tree(Node&& root): root(std::move(root)) {}
+
     inline static Tree<T, N> for_mesh(mesh_iterator begin, mesh_iterator end, int depth_limit = 16)
-    { return Tree<T, N>(std::move(Node::build(begin, end, depth_limit))); }
+    { return Tree<T, N>(Node::build(Range(begin, end), depth_limit)); }
 
     inline const Node& top() const
     { return root; }
 private:
-    Tree(Node&& root): root(std::move(root)) {}
-
     Node root;
 };
 
@@ -323,20 +323,17 @@ inline T Vector3<T>::z() const {
 
 // AABBox implementation
 template<typename T>
-AABBox<typename T::float_t> get_bounding_box(
-    typename T::iterator begin,
-    typename T::iterator end
-) {
+AABBox<typename T::float_t> get_bounding_box(const Range<typename T::iterator>& range) {
     using std::min, std::max;
 
     typename T::float_t min_x, min_y, min_z, max_x, max_y, max_z;
     min_x = min_y = min_z = std::numeric_limits<typename T::float_t>::max();
     max_x = max_y = max_z = std::numeric_limits<typename T::float_t>::min();
 
-    for (auto cur = begin; cur != end; ++cur) {
-        const Vector3 v1 = cur->template v<0>();
-        const Vector3 v2 = cur->template v<1>();
-        const Vector3 v3 = cur->template v<2>();
+    for (const auto& cur : range) {
+        const Vector3 v1 = cur.template v<0>();
+        const Vector3 v2 = cur.template v<1>();
+        const Vector3 v3 = cur.template v<2>();
 
         min_x = min(min_x, min(v1.x(), min(v2.x(), v3.x())));
         max_x = max(max_x, max(v1.x(), max(v2.x(), v3.x())));
@@ -414,77 +411,78 @@ void Mesh<mesh_t, float_t, index_t>::setup() {
 
 
 // Tree implementation
-template<typename It>
-void split(
-    It begin, It end,
-    std::vector<Range<It>>& ranges,
-    int depth_limit,
-    size_t counter
+template<typename T, int N>
+std::vector<Range<typename T::iterator>> split(
+    Range<typename T::iterator> range,
+    int depth_limit
 ) {
-    size_t length = std::distance(begin, end);
-    if (length <= 0) {
-        return;
-    } else if (length <= static_cast<size_t>(1 << counter) || counter == 0) {
-        ranges.emplace_back(begin, end);
-        return;
+    std::vector<Range<typename T::iterator>> splitted;
+
+    std::vector<std::pair<Range<typename T::iterator>, int>> unsplitted;
+    unsplitted.reserve(1 << N);
+    unsplitted.emplace_back(range, N);
+
+    while (!unsplitted.empty()) {
+        auto [cur, splits_remained] = unsplitted.back();
+        unsplitted.pop_back();
+
+        auto length = cur.length();
+        if (splits_remained <= 0 || length <= (1 << splits_remained)) {
+            splitted.push_back(cur);
+            continue;
+        }
+
+        switch ((depth_limit + splits_remained) % 3) {
+        case 0:
+            std::sort(cur.begin(), cur.end(), [](const auto& it1, const auto& it2) {
+                return it1.center.x() < it2.center.x();
+            }); break;
+        case 1:
+            std::sort(cur.begin(), cur.end(), [](const auto& it1, const auto& it2) {
+                return it1.center.y() < it2.center.y();
+            }); break;
+        case 2:
+            std::sort(cur.begin(), cur.end(), [](const auto& it1, const auto& it2) {
+                return it1.center.z() < it2.center.z();
+            }); break;
+        }
+
+        auto mid = std::next(cur.begin(), length / 2);
+        unsplitted.emplace_back(Range(cur.begin(), mid), splits_remained - 1);
+        unsplitted.emplace_back(Range(mid, cur.end()), splits_remained - 1);
     }
 
-    switch ((depth_limit + counter) % 3) {
-    case 0:
-        std::sort(begin, end, [](const auto& it1, const auto& it2) {
-            return it1.center.x() < it2.center.x();
-        }); break;
-    case 1:
-        std::sort(begin, end, [](const auto& it1, const auto& it2) {
-            return it1.center.y() < it2.center.y();
-        }); break;
-    case 2:
-        std::sort(begin, end, [](const auto& it1, const auto& it2) {
-            return it1.center.z() < it2.center.z();
-        }); break;
-    }
-
-    auto mid = std::next(begin, length / 2);
-    split(begin, mid, ranges, depth_limit, counter - 1);
-    split(mid, end, ranges, depth_limit, counter - 1);
+    return splitted;
 }
 
 
 template<typename T, int N>
 typename Tree<T, N>::Node Tree<T, N>::Node::build(
-    typename T::iterator begin,
-    typename T::iterator end,
+    Range<typename T::iterator> range,
     int depth_limit
 ) {
-    if (depth_limit <= 0) {
+    if (depth_limit <= 0 || range.length() <= (1 << N)) {
         return Node(
-            get_bounding_box<T>(begin, end),
-            Range(begin, end),
+            get_bounding_box<T>(range),
+            range,
             std::vector<typename Tree<T, N>::Node>()
         );
     }
 
-    std::vector<Range<typename T::iterator>> ranges;
-    split(begin, end, ranges, depth_limit, N);
-
+    auto subranges = split<T, N>(range, depth_limit);
     std::vector<typename Tree<T, N>::Node> children;
     AABBox<typename T::float_t> aabb;
-    for (const auto& range : ranges) {
-        auto child = build(range.begin(), range.end(), depth_limit - 1);
+    for (const auto& subrange : subranges) {
+        auto child = build(subrange, depth_limit - 1);
         aabb += child.box();
         children.push_back(std::move(child));
     }
 
-    return Node(aabb, Range(begin, end), std::move(children));
+    return Node(aabb, range, std::move(children));
 }
 
 
 // Ray implementation
-/*
- * Read for details:
- * https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
- */
-
 template<typename float_t>
 Ray<float_t>::Ray(Vector3<float_t> origin, Vector3<float_t> direction):
     origin(origin),
@@ -497,6 +495,10 @@ Ray<float_t>::Ray(Vector3<float_t> origin, Vector3<float_t> direction):
     );
 }
 
+/*
+ * Read for details:
+ * https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+ */
 template<typename float_t>
 template<typename mesh_t>
 std::optional<Vector3<float_t>> Ray<float_t>::intersects(
