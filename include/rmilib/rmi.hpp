@@ -58,8 +58,9 @@ struct AABBox {
     AABBox();
     AABBox(Vector3<T> min, Vector3<T> max);
 
-    void operator+=(const AABBox<T>& box);
-    T    volume() const;
+    void   operator+=(const AABBox<T>& box);
+    AABBox operator+(const AABBox<T>& box) const;
+    T      volume() const;
 
     Vector3<T> min;
     Vector3<T> max;
@@ -95,13 +96,8 @@ private:
 
 template<typename T, int N>
 struct SAHSplitter {
-    SAHSplitter(): sectors(2) {}
-    SAHSplitter(int sectors): sectors(sectors) {}
-
     std::vector<Subrange<typename T::iterator>> operator()  (const Range<typename T::iterator>& range) const;
     std::pair<typename T::iterator, double>     find_min_sah(const Range<typename T::iterator>& range) const;
-
-    int sectors;
 };
 
 
@@ -362,35 +358,37 @@ inline T Vector3<T>::operator[](int index) const {
     return coords[index];
 }
 
-
 // AABBox implementation
 template<typename T>
-AABBox<typename T::float_t> get_bounding_box(const Range<typename T::iterator>& range) {
+AABBox<typename T::float_t> get_bounding_box(const typename T::Element& element) {
     using std::min, std::max;
 
-    typename T::float_t min_x, min_y, min_z, max_x, max_y, max_z;
-    min_x = min_y = min_z = std::numeric_limits<typename T::float_t>::max();
-    max_x = max_y = max_z = std::numeric_limits<typename T::float_t>::min();
-
-    for (const auto& cur : range) {
-        const Vector3 v1 = cur.template v<0>();
-        const Vector3 v2 = cur.template v<1>();
-        const Vector3 v3 = cur.template v<2>();
-
-        min_x = min(min_x, min(v1.x(), min(v2.x(), v3.x())));
-        max_x = max(max_x, max(v1.x(), max(v2.x(), v3.x())));
-
-        max_y = max(max_y, max(v1.y(), max(v2.y(), v3.y())));
-        min_y = min(min_y, min(v1.y(), min(v2.y(), v3.y())));
-
-        max_z = max(max_z, max(v1.z(), max(v2.z(), v3.z())));
-        min_z = min(min_z, min(v1.z(), min(v2.z(), v3.z())));
-    }
+    const Vector3 v1 = element.template v<0>();
+    const Vector3 v2 = element.template v<1>();
+    const Vector3 v3 = element.template v<2>();
 
     return {
-        Vector3(min_x, min_y, min_z),
-        Vector3(max_x, max_y, max_z)
+        Vector3(
+            min(v1.x(), min(v2.x(), v3.x())),
+            min(v1.y(), min(v2.y(), v3.y())),
+            min(v1.z(), min(v2.z(), v3.z()))
+        ),
+        Vector3(
+            max(v1.x(), max(v2.x(), v3.x())),
+            max(v1.y(), max(v2.y(), v3.y())),
+            max(v1.z(), max(v2.z(), v3.z()))
+        )
     };
+
+}
+
+template<typename T>
+AABBox<typename T::float_t> get_bounding_box(const Range<typename T::iterator>& range) {
+    AABBox<typename T::float_t> box;
+    for (const auto& cur : range) {
+        box += get_bounding_box<T>(cur);
+    }
+    return box;
 }
 
 template<typename T>
@@ -411,6 +409,22 @@ AABBox<T>::AABBox() {
 
 template<typename T>
 AABBox<T>::AABBox(Vector3<T> min, Vector3<T> max): min(min), max(max) {
+}
+
+template<typename T>
+AABBox<T> AABBox<T>::operator+(const AABBox<T>& box) const {
+    return {
+        Vector3(
+            std::min(min.x(), box.min.x()),
+            std::min(min.y(), box.min.y()),
+            std::min(min.z(), box.min.z())
+        ),
+        Vector3(
+            std::max(max.x(), box.max.x()),
+            std::max(max.y(), box.max.y()),
+            std::max(max.z(), box.max.z())
+        )
+    };
 }
 
 template<typename T>
@@ -465,24 +479,27 @@ std::pair<typename T::iterator, double> SAHSplitter<T, N>::find_min_sah(
     const Range<typename T::iterator>& range
 ) const {
     const auto length = range.length();
-    const auto step = (length + sectors - 1) / sectors;
 
-    auto best_sah = length * get_bounding_box<T>(range).volume();
-    auto mid = range.end();
+    std::vector<AABBox<typename T::float_t>> pref(length + 1);
+    std::vector<AABBox<typename T::float_t>> suf(length + 1);
 
-    for (auto it = std::next(range.begin(), step); it < range.end(); std::advance(it, step)) {
-        Range<typename T::iterator> left(range.begin(), it);
-        Range<typename T::iterator> right(it, range.end());
+    typename T::iterator::difference_type i = 0;
+    for (auto it = range.begin(), rit = range.end() - 1; it != range.end(); ++it, ++i, --rit) {
+        pref[i + 1] = pref[i] + get_bounding_box<T>(*it);
+        suf[i + 1] = suf[i] + get_bounding_box<T>(*rit);
+    }
 
-        const double sah = left.length()  * get_bounding_box<T>(left).volume() +
-                           right.length() * get_bounding_box<T>(right).volume();
-        if (sah < best_sah) {
-            best_sah = sah;
-            mid = it;
+    auto mid = length;
+    auto min_sah = length * pref[length].volume();
+    for (i = 1; i < length; ++i) {
+        const auto sah = i * pref[i].volume() + (length - i) * suf[length - i].volume();
+        if (sah < min_sah) {
+            min_sah = sah;
+            mid = i;
         }
     }
 
-    return std::make_pair(mid, best_sah);
+    return std::make_pair(std::next(range.begin(), mid), min_sah);
 }
 
 
@@ -491,22 +508,11 @@ std::vector<Subrange<typename T::iterator>> SAHSplitter<T, N>::operator()(
     const Range<typename T::iterator>& range
 ) const {
     std::vector<Subrange<typename T::iterator>> subranges;
-
-    std::vector<std::pair<Range<typename T::iterator>, int>> unsplitted;
-    unsplitted.reserve(1 << N);
-    unsplitted.emplace_back(range, N);
+    std::vector<std::pair<Range<typename T::iterator>, int>> unsplitted {{range, N}};
 
     while (!unsplitted.empty()) {
         auto [cur, splits_remained] = unsplitted.back();
         unsplitted.pop_back();
-
-        if (splits_remained <= 0) {
-            subranges.emplace_back(cur.begin(), cur.end(), true);
-            continue;
-        } else if (cur.length() <= (1 << splits_remained)) {
-            subranges.emplace_back(cur.begin(), cur.end(), false);
-            continue;
-        }
 
         int splitting_axis = 0;
         double min_sah = std::numeric_limits<double>::max();
@@ -515,19 +521,25 @@ std::vector<Subrange<typename T::iterator>> SAHSplitter<T, N>::operator()(
             std::sort(cur.begin(), cur.end(), [axis](const auto& it1, const auto& it2) {
                 return it1.center[axis] < it2.center[axis];
             });
-            const auto[mid, sah] = find_min_sah(cur);
-            if (sah < min_sah) {
+
+            if (const auto [mid, sah] = find_min_sah(cur); sah < min_sah) {
                 min_sah = sah;
                 splitting_axis = axis;
                 split = mid;
             }
         }
-        std::sort(cur.begin(), cur.end(), [splitting_axis](const auto& it1, const auto& it2) {
-            return it1.center[splitting_axis] < it2.center[splitting_axis];
-        });
 
-        if (split == cur.end()) {
+        if (splitting_axis != 2) {
+            std::sort(cur.begin(), cur.end(), [splitting_axis](const auto& it1, const auto& it2) {
+                return it1.center[splitting_axis] < it2.center[splitting_axis];
+            });
+        }
+
+        if (split == cur.end() || cur.length() <= (1 << splits_remained)) {
             subranges.emplace_back(cur.begin(), cur.end(), false);
+        } else if (splits_remained == 1) {
+            subranges.emplace_back(cur.begin(), split, true);
+            subranges.emplace_back(split, cur.end(), true);
         } else {
             unsplitted.emplace_back(Range(cur.begin(), split), splits_remained - 1);
             unsplitted.emplace_back(Range(split, cur.end()), splits_remained - 1);

@@ -13,6 +13,9 @@
 #include "rmilib/rmi_parallel.hpp" 
 
 
+const std::string filename = "../../data/urn.stl";
+
+
 class SampleGenerator {
 public:
     SampleGenerator(int seed): seed(seed), engine(seed), dist(-1, 1) {
@@ -41,8 +44,6 @@ std::string concat(const Args&... args) {
     (stream << ... << args);
     return stream.str();
 }
-
-const std::string filename = "../../data/Frieren.stl";
 
 
 template<int N>
