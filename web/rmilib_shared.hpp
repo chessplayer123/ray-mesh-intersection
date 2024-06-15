@@ -64,7 +64,7 @@ auto register_tree(const std::string& name) {
 
     return emscripten::class_<rmi::Tree<WebGLMesh, N>>(name.c_str())
         .class_function("forMesh", +[](WebGLMesh& mesh) {
-            return rmi::Tree<WebGLMesh, N>::for_mesh(mesh.begin(), mesh.end(), 16);
+            return rmi::Tree<WebGLMesh, N>::for_mesh(mesh.begin(), mesh.end());
         })
         .function("intersects", +[](const rmi::Tree<WebGLMesh, N>& tree, const rmi::Ray<float>& ray) {
             return ray.intersects(tree);

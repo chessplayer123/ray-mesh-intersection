@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <numeric>
 #include <memory>
+#include <array>
 #include <algorithm>
 #include <math.h>
 
@@ -32,19 +33,18 @@ public:
     Vector3 operator/ (T value) const;
     bool    operator==(const Vector3& rhs) const;
     bool    operator!=(const Vector3& rhs) const;
+    T       operator[](int index) const;
 
-    bool    equals(const Vector3& rhs, double epsilon) const;
-    T       length() const;
-    T       dot(const Vector3& rhs) const;
-    Vector3 cross(const Vector3& rhs) const;
-    Vector3 ort() const;
-    T       x() const;
-    T       y() const;
-    T       z() const;
+    bool        equals(const Vector3& rhs, double epsilon) const;
+    T           length() const;
+    T           dot(const Vector3& rhs) const;
+    Vector3     cross(const Vector3& rhs) const;
+    Vector3     ort() const;
+    constexpr T x() const;
+    constexpr T y() const;
+    constexpr T z() const;
 private:
-    T m_x;
-    T m_y;
-    T m_z;
+    std::array<T, 3> coords;
 };
 
 typedef Vector3<double> Vector3d;
@@ -59,6 +59,7 @@ struct AABBox {
     AABBox(Vector3<T> min, Vector3<T> max);
 
     void operator+=(const AABBox<T>& box);
+    T    volume() const;
 
     Vector3<T> min;
     Vector3<T> max;
@@ -73,10 +74,34 @@ public:
     inline T    begin()  const { return m_begin; }
     inline T    end()    const { return m_end; }
     inline auto length() const { return std::distance(m_begin, m_end); }
-
 private:
     T m_begin;
     T m_end;
+};
+
+
+template<typename T>
+class Subrange : public Range<T> {
+public:
+    Subrange(T begin, T end, bool splittable):
+        Range<T>(begin, end),
+        splittable(splittable) {}
+
+    inline bool is_splittable() const { return splittable; }
+private:
+    bool splittable;
+};
+
+
+template<typename T, int N>
+struct SAHSplitter {
+    SAHSplitter(): sectors(2) {}
+    SAHSplitter(int sectors): sectors(sectors) {}
+
+    std::vector<Subrange<typename T::iterator>> operator()  (const Range<typename T::iterator>& range) const;
+    std::pair<typename T::iterator, double>     find_min_sah(const Range<typename T::iterator>& range) const;
+
+    int sectors;
 };
 
 
@@ -101,7 +126,13 @@ public:
             std::vector<Node>&& children
         ): bounding_box(box), range(range), children(std::move(children)) {}
 
-        static Node build(Range<typename T::iterator> range, int depth_limit);
+        Node(
+            AABBox<typename T::float_t> box,
+            Range<mesh_iterator> range
+        ): bounding_box(box), range(range), children() {}
+
+        template<typename Splitter>
+        static Node build(Range<typename T::iterator> range, const Splitter& splitter);
 
         inline bool                               is_leaf()     const { return children.empty(); }
         inline const std::vector<Node>&           child_nodes() const { return children; }
@@ -115,8 +146,14 @@ public:
 
     Tree(Node&& root): root(std::move(root)) {}
 
-    inline static Tree<T, N> for_mesh(mesh_iterator begin, mesh_iterator end, int depth_limit = 16)
-    { return Tree<T, N>(Node::build(Range(begin, end), depth_limit)); }
+    template<typename Splitter = SAHSplitter<T, N>>
+    inline static Tree<T, N> for_mesh(
+        mesh_iterator begin,
+        mesh_iterator end,
+        const Splitter& splitter = Splitter()
+    ) {
+        return Tree<T, N>(Node::build(Range(begin, end), splitter));
+    }
 
     inline const Node& top() const
     { return root; }
@@ -208,116 +245,121 @@ namespace rmi {
 
 // Vector3 implementation
 template<typename T>
-inline constexpr Vector3<T>::Vector3(): m_x(0), m_y(0), m_z(0) {
+inline constexpr Vector3<T>::Vector3(): coords({0, 0, 0}) {
 }
 
 template<typename T>
-inline constexpr Vector3<T>::Vector3(T x, T y, T z): m_x(x), m_y(y), m_z(z) {
+inline constexpr Vector3<T>::Vector3(T x, T y, T z): coords({x, y, z}) {
 }
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& stream, const Vector3<T>& vec) {
-    return stream << "Vector(" << vec.m_x << ", " << vec.m_y << ", " << vec.m_z << ")";
+    return stream << "Vector(" << vec.x() << ", " << vec.y() << ", " << vec.z() << ")";
 }
 
 template<typename T>
 inline Vector3<T> Vector3<T>::operator+(const Vector3<T>& rhs) const {
     return Vector3<T>(
-        m_x + rhs.m_x,
-        m_y + rhs.m_y,
-        m_z + rhs.m_z
+        x() + rhs.x(),
+        y() + rhs.y(),
+        z() + rhs.z()
     );
 }
 
 template<typename T>
 inline void Vector3<T>::operator+=(const Vector3<T>& rhs) {
-    m_x += rhs.m_x;
-    m_y += rhs.m_y;
-    m_z += rhs.m_z;
+    coords[0] += rhs.x();
+    coords[1] += rhs.y();
+    coords[2] += rhs.z();
 }
 
 template<typename T>
 inline Vector3<T> Vector3<T>::operator-(const Vector3<T>& rhs) const {
-    return Vector3<T>(m_x - rhs.m_x, m_y - rhs.m_y, m_z - rhs.m_z);
+    return Vector3<T>(x() - rhs.x(), y() - rhs.y(), z() - rhs.z());
 }
 
 template<typename T>
 inline void Vector3<T>::operator-=(const Vector3<T>& rhs) {
-    m_x -= rhs.m_x;
-    m_y -= rhs.m_y;
-    m_z -= rhs.m_z;
+    coords[0] -= rhs.x();
+    coords[1] -= rhs.y();
+    coords[2] -= rhs.z();
 }
 
 template<typename T>
 inline Vector3<T> Vector3<T>::operator*(T value) const {
-    return Vector3<T>(m_x * value, m_y * value, m_z * value);
+    return Vector3<T>(x() * value, y() * value, z() * value);
 }
 
 template<typename T>
 inline Vector3<T> Vector3<T>::operator*(const Vector3<T>& rhs) const {
-    return Vector3<T>(m_x * rhs.m_x, m_y * rhs.m_y, m_z * rhs.m_z);
+    return Vector3<T>(x() * rhs.x(), y() * rhs.y(), z() * rhs.z());
 }
 
 template<typename T>
 inline Vector3<T> Vector3<T>::operator/(T value) const {
-    return Vector3<T>(m_x / value, m_y / value, m_z / value);
+    return Vector3<T>(x() / value, y() / value, z() / value);
 }
 
 template<typename T>
 inline bool Vector3<T>::operator==(const Vector3<T>& rhs) const {
-    return m_x == rhs.m_x && m_y == rhs.m_y && m_z == rhs.m_z;
+    return x() == rhs.x() && y() == rhs.y() && z() == rhs.z();
 }
 
 template<typename T>
 inline bool Vector3<T>::operator!=(const Vector3<T>& rhs) const {
-    return m_x != rhs.m_x || m_y != rhs.m_y || m_z != rhs.m_z;
+    return x() != rhs.x() || y() != rhs.y() || z() != rhs.z();
 }
 
 template<typename T>
 inline bool Vector3<T>::equals(const Vector3<T>& rhs, double epsilon) const {
-    return abs(m_x - rhs.m_x) < epsilon
-        && abs(m_y - rhs.m_y) < epsilon
-        && abs(m_z - rhs.m_z) < epsilon;
+    return abs(x() - rhs.x()) < epsilon
+        && abs(y() - rhs.y()) < epsilon
+        && abs(z() - rhs.z()) < epsilon;
 }
 
 template<typename T>
 inline T Vector3<T>::length() const {
-    return sqrt(m_x*m_x + m_y*m_y + m_z*m_z);
+    return sqrt(x()*x() + y()*y() + z()*z());
 }
 
 template<typename T>
 inline Vector3<T> Vector3<T>::cross(const Vector3<T>& rhs) const {
     return Vector3<T>(
-        m_y * rhs.m_z - m_z * rhs.m_y,
-        m_z * rhs.m_x - m_x * rhs.m_z,
-        m_x * rhs.m_y - m_y * rhs.m_x
+        y() * rhs.z() - z() * rhs.y(),
+        z() * rhs.x() - x() * rhs.z(),
+        x() * rhs.y() - y() * rhs.x()
     );
 }
 
 template<typename T>
 inline T Vector3<T>::dot(const Vector3<T>& rhs) const {
-    return m_x * rhs.m_x + m_y * rhs.m_y + m_z * rhs.m_z;
+    return x() * rhs.x() + y() * rhs.y() + z() * rhs.z();
 }
 
 template<typename T>
 inline Vector3<T> Vector3<T>::ort() const {
     T len = length();
-    return Vector3<T>(m_x / len, m_y / len, m_z / len);
+    return Vector3<T>(x() / len, y() / len, z() / len);
 }
 
 template<typename T>
-inline T Vector3<T>::x() const {
-    return m_x;
+inline constexpr T Vector3<T>::x() const {
+    return coords[0];
 }
 
 template<typename T>
-inline T Vector3<T>::y() const {
-    return m_y;
+inline constexpr T Vector3<T>::y() const {
+    return coords[1];
 }
 
 template<typename T>
-inline T Vector3<T>::z() const {
-    return m_z;
+inline constexpr T Vector3<T>::z() const {
+    return coords[2];
+}
+
+template<typename T>
+inline T Vector3<T>::operator[](int index) const {
+    return coords[index];
 }
 
 
@@ -350,6 +392,13 @@ AABBox<typename T::float_t> get_bounding_box(const Range<typename T::iterator>& 
         Vector3(max_x, max_y, max_z)
     };
 }
+
+template<typename T>
+inline T AABBox<T>::volume() const {
+    const auto dim = max - min;
+    return dim.x() * dim.y() * dim.z();
+}
+
 
 template<typename T>
 AABBox<T>::AABBox() {
@@ -412,11 +461,36 @@ void Mesh<mesh_t, float_t, index_t>::setup() {
 
 // Tree implementation
 template<typename T, int N>
-std::vector<Range<typename T::iterator>> split(
-    Range<typename T::iterator> range,
-    int depth_limit
-) {
-    std::vector<Range<typename T::iterator>> splitted;
+std::pair<typename T::iterator, double> SAHSplitter<T, N>::find_min_sah(
+    const Range<typename T::iterator>& range
+) const {
+    const auto length = range.length();
+    const auto step = (length + sectors - 1) / sectors;
+
+    auto best_sah = length * get_bounding_box<T>(range).volume();
+    auto mid = range.end();
+
+    for (auto it = std::next(range.begin(), step); it < range.end(); std::advance(it, step)) {
+        Range<typename T::iterator> left(range.begin(), it);
+        Range<typename T::iterator> right(it, range.end());
+
+        const double sah = left.length()  * get_bounding_box<T>(left).volume() +
+                           right.length() * get_bounding_box<T>(right).volume();
+        if (sah < best_sah) {
+            best_sah = sah;
+            mid = it;
+        }
+    }
+
+    return std::make_pair(mid, best_sah);
+}
+
+
+template<typename T, int N>
+std::vector<Subrange<typename T::iterator>> SAHSplitter<T, N>::operator()(
+    const Range<typename T::iterator>& range
+) const {
+    std::vector<Subrange<typename T::iterator>> subranges;
 
     std::vector<std::pair<Range<typename T::iterator>, int>> unsplitted;
     unsplitted.reserve(1 << N);
@@ -426,54 +500,58 @@ std::vector<Range<typename T::iterator>> split(
         auto [cur, splits_remained] = unsplitted.back();
         unsplitted.pop_back();
 
-        auto length = cur.length();
-        if (splits_remained <= 0 || length <= (1 << splits_remained)) {
-            splitted.push_back(cur);
+        if (splits_remained <= 0) {
+            subranges.emplace_back(cur.begin(), cur.end(), true);
+            continue;
+        } else if (cur.length() <= (1 << splits_remained)) {
+            subranges.emplace_back(cur.begin(), cur.end(), false);
             continue;
         }
 
-        switch ((depth_limit + splits_remained) % 3) {
-        case 0:
-            std::sort(cur.begin(), cur.end(), [](const auto& it1, const auto& it2) {
-                return it1.center.x() < it2.center.x();
-            }); break;
-        case 1:
-            std::sort(cur.begin(), cur.end(), [](const auto& it1, const auto& it2) {
-                return it1.center.y() < it2.center.y();
-            }); break;
-        case 2:
-            std::sort(cur.begin(), cur.end(), [](const auto& it1, const auto& it2) {
-                return it1.center.z() < it2.center.z();
-            }); break;
+        int splitting_axis = 0;
+        double min_sah = std::numeric_limits<double>::max();
+        auto split = cur.end();
+        for (int axis = 0; axis < 3; ++axis) {
+            std::sort(cur.begin(), cur.end(), [axis](const auto& it1, const auto& it2) {
+                return it1.center[axis] < it2.center[axis];
+            });
+            const auto[mid, sah] = find_min_sah(cur);
+            if (sah < min_sah) {
+                min_sah = sah;
+                splitting_axis = axis;
+                split = mid;
+            }
         }
+        std::sort(cur.begin(), cur.end(), [splitting_axis](const auto& it1, const auto& it2) {
+            return it1.center[splitting_axis] < it2.center[splitting_axis];
+        });
 
-        auto mid = std::next(cur.begin(), length / 2);
-        unsplitted.emplace_back(Range(cur.begin(), mid), splits_remained - 1);
-        unsplitted.emplace_back(Range(mid, cur.end()), splits_remained - 1);
+        if (split == cur.end()) {
+            subranges.emplace_back(cur.begin(), cur.end(), false);
+        } else {
+            unsplitted.emplace_back(Range(cur.begin(), split), splits_remained - 1);
+            unsplitted.emplace_back(Range(split, cur.end()), splits_remained - 1);
+        }
     }
 
-    return splitted;
+    return subranges;
 }
 
 
 template<typename T, int N>
+template<typename Splitter>
 typename Tree<T, N>::Node Tree<T, N>::Node::build(
     Range<typename T::iterator> range,
-    int depth_limit
+    const Splitter& splitter
 ) {
-    if (depth_limit <= 0 || range.length() <= (1 << N)) {
-        return Node(
-            get_bounding_box<T>(range),
-            range,
-            std::vector<typename Tree<T, N>::Node>()
-        );
-    }
-
-    auto subranges = split<T, N>(range, depth_limit);
+    auto subranges = splitter(range);
     std::vector<typename Tree<T, N>::Node> children;
     AABBox<typename T::float_t> aabb;
     for (const auto& subrange : subranges) {
-        auto child = build(subrange, depth_limit - 1);
+        auto child = subrange.is_splittable() ?
+            build(subrange, splitter) :
+            Node(get_bounding_box<T>(subrange), subrange);
+
         aabb += child.box();
         children.push_back(std::move(child));
     }

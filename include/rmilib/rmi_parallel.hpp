@@ -33,12 +33,12 @@ std::vector<Vector3<typename T::float_t>> omp_intersects(
 );
 
 
-template<typename T, int N>
+template<typename T, int N, typename Splitter = rmi::SAHSplitter<T, N>>
 Tree<T, N> omp_build(
     typename T::iterator begin,
     typename T::iterator end,
     int threads_count,
-    int depth_limit = 16
+    const Splitter& splitter = Splitter()
 );
 
 }
@@ -185,10 +185,10 @@ void omp_recursive_intersects(
             }
         }
     } else {
-        #pragma omp taskloop shared(output)
         for (const auto& child : node->child_nodes()) {
             if (ray.intersects(child.box())) {
                 const auto* child_ptr = &child;
+                #pragma omp task shared(output)
                 omp_recursive_intersects<T, N>(ray, child_ptr, output, epsilon);
             }
         }
@@ -213,31 +213,26 @@ std::vector<Vector3<typename T::float_t>> omp_intersects(
     #pragma omp parallel shared(output) num_threads(threads_count)
     #pragma omp single
     omp_recursive_intersects<T, N>(ray, &root, output, epsilon);
+    #pragma omp taskwait
 
     return output;
 }
 
 
-template<typename T, int N>
+template<typename T, int N, typename Splitter>
 typename Tree<T, N>::Node omp_recursive_build(
-    Range<typename T::iterator> range,
-    int depth_limit
+    const Range<typename T::iterator>& range,
+    const Splitter& splitter
 ) {
-    if (depth_limit <= 0 || range.length() <= (1 << N)) {
-        return typename Tree<T, N>::Node(
-            get_bounding_box<T>(range),
-            range,
-            std::vector<typename Tree<T, N>::Node>()
-        );
-    }
-
-    auto subranges = rmi::split<T, N>(range, depth_limit);
+    auto subranges = splitter(range);
     std::vector<typename Tree<T, N>::Node> children;
     AABBox<typename T::float_t> aabb;
 
     #pragma omp taskloop shared(children, aabb, subranges)
     for (const auto& subrange : subranges) {
-        auto child = omp_recursive_build<T, N>(subrange, depth_limit - 1);
+        auto child = subrange.is_splittable() ?
+            omp_recursive_build<T, N>(subrange, splitter) :
+            typename Tree<T, N>::Node(get_bounding_box<T>(subrange), subrange);
         #pragma omp critical
         {
             aabb += child.box();
@@ -249,21 +244,20 @@ typename Tree<T, N>::Node omp_recursive_build(
 }
 
 
-template<typename T, int N>
+template<typename T, int N, typename Splitter>
 Tree<T, N> omp_build(
     typename T::iterator begin,
     typename T::iterator end,
     int threads_count,
-    int depth_limit
+    const Splitter& splitter
 ) {
     typename Tree<T, N>::Node node(
         AABBox<typename T::float_t>(),
-        Range(end, end),
-        std::vector<typename Tree<T, N>::Node>()
+        Range(end, end)
     );
     #pragma omp parallel num_threads(threads_count)
     #pragma omp single
-    node = std::move(omp_recursive_build<T, N>(Range(begin, end), depth_limit));
+    node = std::move(omp_recursive_build<T, N>(Range(begin, end), splitter));
 
     return Tree<T, N>(std::move(node));
 }

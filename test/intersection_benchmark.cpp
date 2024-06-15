@@ -32,7 +32,7 @@ private:
     int seed;
     std::default_random_engine engine;
     std::uniform_real_distribution<> dist;
-};
+} generator(354238);
 
 
 template<typename... Args>
@@ -42,12 +42,11 @@ std::string concat(const Args&... args) {
     return stream.str();
 }
 
+const std::string filename = "../../data/Frieren.stl";
+
 
 template<int N>
-void sync_tree_benchmark(
-    rmi::Tree<TriangularMesh, N>& tree,
-    SampleGenerator& generator
-) {
+void seq_tree_benchmark(rmi::Tree<TriangularMesh, N>& tree) {
     generator.reset();
     BENCHMARK_ADVANCED(concat("Sync Tree<", N, "> search "))(auto meter) {
         auto ray = generator.next_ray();
@@ -57,49 +56,41 @@ void sync_tree_benchmark(
 
 
 template<int N>
-void omp_tree_benchmark(
-    rmi::Tree<TriangularMesh, N>& tree,
-    SampleGenerator& generator,
-    int threads_count
-) {
-    #ifdef RMI_INCLUDE_OMP 
-    generator.reset(); 
-    BENCHMARK_ADVANCED(concat( 
+void omp_tree_benchmark(rmi::Tree<TriangularMesh, N>& tree, int threads_count) {
+#ifdef RMI_INCLUDE_OMP
+    generator.reset();
+    BENCHMARK_ADVANCED(concat(
         "OMP (", threads_count, " threads) Tree<", N, "> search "
-    ))(auto meter) { 
-        auto ray = generator.next_ray(); 
-        meter.measure([&ray, &tree, threads_count] { 
-            return rmi::parallel::omp_intersects(ray, tree, threads_count); 
-        }); 
-    }; 
-    #endif 
+    ))(auto meter) {
+        auto ray = generator.next_ray();
+        meter.measure([&ray, &tree, threads_count] {
+            return rmi::parallel::omp_intersects(ray, tree, threads_count);
+        });
+    };
+#endif
 }
 
 
 template<int N>
 void pool_tree_benchmark(
     rmi::Tree<TriangularMesh, N>& tree,
-    SampleGenerator& generator,
     int threads_count
 ) {
-    #ifdef RMI_INCLUDE_POOL 
-    generator.reset(); 
-    BENCHMARK_ADVANCED(concat( 
+#ifdef RMI_INCLUDE_POOL 
+    generator.reset();
+    BENCHMARK_ADVANCED(concat(
         "Thread pool (", threads_count, " threads) Tree<", N, "> search "
-    ))(auto meter) { 
-        auto ray = generator.next_ray(); 
-        meter.measure([&ray, &tree, threads_count] { 
-            return rmi::parallel::pool_intersects(ray, tree, threads_count); 
-        }); 
-    }; 
-    #endif 
+    ))(auto meter) {
+        auto ray = generator.next_ray();
+        meter.measure([&ray, &tree, threads_count] {
+            return rmi::parallel::pool_intersects(ray, tree, threads_count);
+        });
+    };
+#endif
 }
 
 
 TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
-    std::string filename = "../../data/urn.stl";
-
-    SampleGenerator generator(354238);
     TriangularMesh mesh = read_raw_triangular_mesh<double, size_t>(filename);
 
     generator.reset();
@@ -107,23 +98,46 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
         auto ray = generator.next_ray();
         meter.measure([&ray, &mesh] { return ray.intersects(mesh); });
     };
+}
 
 
-    constexpr int threads_count = 2;
-    constexpr int depth = 16;
-    auto kdtree   = rmi::KDTree  <TriangularMesh>::for_mesh(mesh.begin(), mesh.end(), depth);
-    auto quadtree = rmi::Quadtree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end(), depth);
-    auto octree   = rmi::Octree  <TriangularMesh>::for_mesh(mesh.begin(), mesh.end(), depth);
+TEST_CASE("KD-Tree intersection", "[benchmark][ray][kdtree]") {
+    TriangularMesh mesh = read_raw_triangular_mesh<double, size_t>(filename);
+    auto tree = rmi::KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
 
-    sync_tree_benchmark(kdtree, generator);
-    sync_tree_benchmark(quadtree, generator);
-    sync_tree_benchmark(octree, generator);
+    seq_tree_benchmark(tree);
 
-    omp_tree_benchmark(kdtree, generator, threads_count);
-    omp_tree_benchmark(quadtree, generator, threads_count);
-    omp_tree_benchmark(octree, generator, threads_count);
+    for (int threads_count = 2; threads_count <= 8; threads_count *= 2)
+        omp_tree_benchmark(tree, threads_count);
 
-    pool_tree_benchmark(kdtree, generator, threads_count);
-    pool_tree_benchmark(quadtree, generator, threads_count);
-    pool_tree_benchmark(octree, generator, threads_count);
+    for (int threads_count = 2; threads_count <= 8; threads_count *= 2)
+        pool_tree_benchmark(tree, threads_count);
+}
+
+
+TEST_CASE("Quadree intersection", "[benchmark][ray][quadtree]") {
+    TriangularMesh mesh = read_raw_triangular_mesh<double, size_t>(filename);
+    auto tree = rmi::Quadtree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
+
+    seq_tree_benchmark(tree);
+
+    for (int threads_count = 2; threads_count <= 8; threads_count *= 2)
+        omp_tree_benchmark(tree, threads_count);
+
+    for (int threads_count = 2; threads_count <= 8; threads_count *= 2)
+        pool_tree_benchmark(tree, threads_count);
+}
+
+
+TEST_CASE("Octree intersection", "[benchmark][ray][octree]") {
+    TriangularMesh mesh = read_raw_triangular_mesh<double, size_t>(filename);
+    auto tree = rmi::Octree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
+
+    seq_tree_benchmark(tree);
+
+    for (int threads_count = 2; threads_count <= 8; threads_count *= 2)
+        omp_tree_benchmark(tree, threads_count);
+
+    for (int threads_count = 2; threads_count <= 8; threads_count *= 2)
+        pool_tree_benchmark(tree, threads_count);
 }
