@@ -86,7 +86,8 @@ class Subrange : public Range<T> {
 public:
     Subrange(T begin, T end, bool splittable):
         Range<T>(begin, end),
-        splittable(splittable) {}
+        splittable(splittable)
+    {}
 
     inline bool is_splittable() const { return splittable; }
 private:
@@ -96,8 +97,31 @@ private:
 
 template<typename T, int N>
 struct SAHSplitter {
-    std::vector<Subrange<typename T::iterator>> operator()  (const Range<typename T::iterator>& range) const;
-    std::pair<typename T::iterator, double>     find_min_sah(const Range<typename T::iterator>& range) const;
+    SAHSplitter(int threshold = 16): threshold(threshold) {}
+
+    std::vector<Subrange<typename T::iterator>> operator()(
+        const Range<typename T::iterator>& range,
+        int depth
+    ) const;
+
+    std::pair<typename T::iterator, double> find_min_sah(
+        const Range<typename T::iterator>& range
+    ) const;
+
+    int threshold;
+};
+
+
+template<typename T, int N>
+struct MidSplitter {
+    MidSplitter(int depth_limit = 16): depth_limit(depth_limit) {}
+
+    std::vector<Subrange<typename T::iterator>> operator()(
+        const Range<typename T::iterator>& range,
+        int depth
+    ) const;
+
+    int depth_limit;
 };
 
 
@@ -128,7 +152,7 @@ public:
         ): bounding_box(box), range(range), children() {}
 
         template<typename Splitter>
-        static Node build(Range<typename T::iterator> range, const Splitter& splitter);
+        static Node build(Range<typename T::iterator> range, int depth, const Splitter& splitter);
 
         inline bool                               is_leaf()     const { return children.empty(); }
         inline const std::vector<Node>&           child_nodes() const { return children; }
@@ -148,7 +172,7 @@ public:
         mesh_iterator end,
         const Splitter& splitter = Splitter()
     ) {
-        return Tree<T, N>(Node::build(Range(begin, end), splitter));
+        return Tree<T, N>(Node::build(Range(begin, end), 0, splitter));
     }
 
     inline const Node& top() const
@@ -201,6 +225,8 @@ template<typename float_t>
 class Ray {
 public:
     Ray(Vector3<float_t> origin, Vector3<float_t> direction);
+
+    Vector3<float_t> at(double t) const;
 
     bool intersects(const AABBox<float_t>& box) const;
 
@@ -358,6 +384,7 @@ inline T Vector3<T>::operator[](int index) const {
     return coords[index];
 }
 
+
 // AABBox implementation
 template<typename T>
 AABBox<typename T::float_t> get_bounding_box(const typename T::Element& element) {
@@ -396,7 +423,6 @@ inline T AABBox<T>::volume() const {
     const auto dim = max - min;
     return dim.x() * dim.y() * dim.z();
 }
-
 
 template<typename T>
 AABBox<T>::AABBox() {
@@ -502,10 +528,9 @@ std::pair<typename T::iterator, double> SAHSplitter<T, N>::find_min_sah(
     return std::make_pair(std::next(range.begin(), mid), min_sah);
 }
 
-
 template<typename T, int N>
 std::vector<Subrange<typename T::iterator>> SAHSplitter<T, N>::operator()(
-    const Range<typename T::iterator>& range
+    const Range<typename T::iterator>& range, int
 ) const {
     std::vector<Subrange<typename T::iterator>> subranges;
     std::vector<std::pair<Range<typename T::iterator>, int>> unsplitted {{range, N}};
@@ -535,7 +560,7 @@ std::vector<Subrange<typename T::iterator>> SAHSplitter<T, N>::operator()(
             });
         }
 
-        if (split == cur.end() || cur.length() <= (1 << splits_remained)) {
+        if (split == cur.end() || cur.length() <= threshold) {
             subranges.emplace_back(cur.begin(), cur.end(), false);
         } else if (splits_remained == 1) {
             subranges.emplace_back(cur.begin(), split, true);
@@ -551,17 +576,55 @@ std::vector<Subrange<typename T::iterator>> SAHSplitter<T, N>::operator()(
 
 
 template<typename T, int N>
+std::vector<Subrange<typename T::iterator>> MidSplitter<T, N>::operator()(
+    const Range<typename T::iterator>& range,
+    int depth
+) const {
+    std::vector<Subrange<typename T::iterator>> subranges;
+    std::vector<std::pair<Range<typename T::iterator>, int>> unsplitted {{range, N}};
+
+    while (!unsplitted.empty()) {
+        auto [cur, splits_remained] = unsplitted.back();
+        unsplitted.pop_back();
+
+        auto length = cur.length();
+        if (depth >= depth_limit || length <= (1 << N)) {
+            subranges.emplace_back(cur.begin(), cur.end(), false);
+            continue;
+        }
+
+        int axis = (depth + splits_remained) % 3;
+        std::sort(cur.begin(), cur.end(), [axis](const auto& it1, const auto& it2) {
+            return it1.center[axis] < it2.center[axis];
+        });
+
+        auto mid = std::next(cur.begin(), length / 2);
+        if (splits_remained == 1) {
+            subranges.emplace_back(cur.begin(), mid, true);
+            subranges.emplace_back(mid, cur.end(), true);
+        } else {
+            unsplitted.emplace_back(Range(cur.begin(), mid), splits_remained - 1);
+            unsplitted.emplace_back(Range(mid, cur.end()), splits_remained - 1);
+        }
+    }
+
+    return subranges;
+}
+
+
+template<typename T, int N>
 template<typename Splitter>
 typename Tree<T, N>::Node Tree<T, N>::Node::build(
     Range<typename T::iterator> range,
+    int depth,
     const Splitter& splitter
 ) {
-    auto subranges = splitter(range);
+    auto subranges = splitter(range, depth);
     std::vector<typename Tree<T, N>::Node> children;
     AABBox<typename T::float_t> aabb;
     for (const auto& subrange : subranges) {
         auto child = subrange.is_splittable() ?
-            build(subrange, splitter) :
+            build(subrange, depth + 1, splitter) :
             Node(get_bounding_box<T>(subrange), subrange);
 
         aabb += child.box();
@@ -573,6 +636,11 @@ typename Tree<T, N>::Node Tree<T, N>::Node::build(
 
 
 // Ray implementation
+template<typename float_t>
+inline Vector3<float_t> Ray<float_t>::at(double t) const {
+    return origin + vector * t;
+}
+
 template<typename float_t>
 Ray<float_t>::Ray(Vector3<float_t> origin, Vector3<float_t> direction):
     origin(origin),
@@ -625,7 +693,8 @@ std::optional<Vector3<float_t>> Ray<float_t>::intersects(
     if (t <= epsilon) {
         return std::nullopt;
     }
-    return origin + vector * t;
+
+    return at(t);
 }
 
 

@@ -231,16 +231,17 @@ std::vector<Vector3<typename T::float_t>> omp_intersects(
 template<typename T, int N, typename Splitter>
 typename Tree<T, N>::Node omp_recursive_build(
     const Range<typename T::iterator>& range,
+    int depth,
     const Splitter& splitter
 ) {
-    auto subranges = splitter(range);
+    auto subranges = splitter(range, depth);
     std::vector<typename Tree<T, N>::Node> children;
     AABBox<typename T::float_t> aabb;
 
     #pragma omp taskloop shared(children, aabb, subranges)
     for (const auto& subrange : subranges) {
         auto child = subrange.is_splittable() ?
-            omp_recursive_build<T, N>(subrange, splitter) :
+            omp_recursive_build<T, N>(subrange, depth + 1, splitter) :
             typename Tree<T, N>::Node(get_bounding_box<T>(subrange), subrange);
         #pragma omp critical
         {
@@ -266,7 +267,7 @@ Tree<T, N> omp_build(
     );
     #pragma omp parallel num_threads(threads_count)
     #pragma omp single
-    node = std::move(omp_recursive_build<T, N>(Range(begin, end), splitter));
+    node = std::move(omp_recursive_build<T, N>(Range(begin, end), 0, splitter));
 
     return Tree<T, N>(std::move(node));
 }
