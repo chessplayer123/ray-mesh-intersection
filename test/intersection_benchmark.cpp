@@ -13,7 +13,7 @@
 #include "rmilib/rmi_parallel.hpp" 
 
 
-const std::string filename = "../../data/urn.stl";
+const std::string filename = "../../data/Utah_teapot_(solid).stl";
 
 
 class SampleGenerator {
@@ -35,7 +35,7 @@ private:
     int seed;
     std::default_random_engine engine;
     std::uniform_real_distribution<> dist;
-} generator(354238);
+} generator(time(NULL));
 
 
 template<typename... Args>
@@ -104,7 +104,9 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
         generator.reset();
         BENCHMARK_ADVANCED(concat("Parallel <", threads_count, "> search ", mesh.size()))(auto meter) {
             auto ray = generator.next_ray();
-            meter.measure([&ray, &mesh, threads_count] { return rmi::parallel::omp_intersects(ray, mesh, threads_count); });
+            meter.measure([&ray, &mesh, threads_count] {
+                return rmi::parallel::omp_intersects(ray, mesh, threads_count);
+            });
         };
     }
 }

@@ -281,7 +281,7 @@ std::vector<Vector3<float_t>> omp_intersects(
 ) {
     std::vector<Vector3<float_t>> intersections;
 
-    #pragma omp parallel for shared(mesh, ray, intersections)
+    #pragma omp parallel for shared(mesh, ray, intersections) num_threads(threads_count)
     for (const auto& triangle : mesh) {
         auto intersection = ray.template intersects<mesh_t>(triangle, epsilon);
 
