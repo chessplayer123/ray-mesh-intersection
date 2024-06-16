@@ -100,6 +100,7 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
         meter.measure([&ray, &mesh] { return ray.intersects(mesh); });
     };
 
+#ifdef RMI_INCLUDE_OMP
     for (int threads_count = 2; threads_count <= 8; threads_count *= 2) {
         generator.reset();
         BENCHMARK_ADVANCED(concat("Parallel <", threads_count, "> search ", mesh.size()))(auto meter) {
@@ -109,6 +110,7 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
             });
         };
     }
+#endif
 }
 
 
