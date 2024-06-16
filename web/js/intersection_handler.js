@@ -9,7 +9,12 @@ function toFixed(num, digitsCount=2) {
 
 class IntersectionHandler {
     constructor() {
-        this.clear();
+        this.ray = null;
+        this.tree = null;
+        this.coords = [];
+
+        this.points = new Drawable([0.96, 0.3, 0.0, 1], gl.POINTS);
+        this.boxes = new Drawable([0.5, 0.5, 1, 1], gl.LINES);
     }
 
     extendPoints(points) {
@@ -23,11 +28,7 @@ class IntersectionHandler {
             this.coords.push(p.x, p.y, p.z);
             pointsRepr.push(`\n  (${toFixed(p.x)}, ${toFixed(p.y)}, ${toFixed(p.z)})`)
         }
-
-        this.pointsBufferInfo = twgl.createBufferInfoFromArrays(gl, {
-            position: this.coords
-        })
-        this.pointsVAO = twgl.createVAOFromBufferInfo(gl, programInfo, this.pointsBufferInfo);
+        this.points.update({position: this.coords});
 
         intersectionsData.innerHTML += pointsRepr.join();
     }
@@ -65,7 +66,7 @@ class IntersectionHandler {
         this.tree = tree;
         this.ray = ray;
 
-        [this.boxesBufferInfo, this.boxesVAO] = this.tree.createBufferInfoAndVao();
+        this.boxes.update({position: this.tree.createWireframe()});
 
         let data = [
             `Position  (${toFixed(camera.pos[0])}, ${toFixed(camera.pos[1])}, ${toFixed(camera.pos[2])})`,
@@ -80,7 +81,13 @@ class IntersectionHandler {
         if (this.ray && this.tree) {
             const intersections = this.tree.descendAlongRay(this.ray);
             this.extendPoints(intersections);
-            [this.boxesBufferInfo, this.boxesVAO] = this.tree.createBufferInfoAndVao();
+
+            const lines = this.tree.createWireframe();
+            if (lines.length == 0) {
+                this.boxes.clear();
+            } else {
+                this.boxes.update({position: lines});
+            }
         }
     }
 
@@ -91,31 +98,13 @@ class IntersectionHandler {
         this.tree = null;
 
         this.coords = [];
-        this.pointsVAO = null;
-        this.pointsBufferInfo = null;
-
-        this.boxesVAO = null;
-        this.boxesBufferInfo = null;
+        this.points.clear();
+        this.boxes.clear();
     }
 
     draw() {
-        if (this.pointsVAO) {
-            twgl.setUniforms(programInfo, {
-                u_colorMult: [0.96, 0.3, 0.0, 1]
-            });
-
-            gl.bindVertexArray(this.pointsVAO);
-            twgl.drawBufferInfo(gl, this.pointsBufferInfo, gl.POINTS);
-        }
-
-        if (this.boxesVAO) {
-            twgl.setUniforms(programInfo, {
-                u_colorMult: [0.5, 0.5, 1, 1],
-            });
-
-            gl.bindVertexArray(this.boxesVAO);
-            twgl.drawBufferInfo(gl, this.boxesBufferInfo, gl.LINES);
-        }
+        this.points.draw();
+        this.boxes.draw();
     }
 }
 

@@ -4,11 +4,7 @@ class Tree {
         this.data = null;
     }
 
-    createBufferInfoAndVao() {
-        if (this.nodes.length == 0) {
-            return [null, null];
-        }
-
+    createWireframe() {
         let points = [];
         for (const node of this.nodes) {
             const mn = node.box.min;
@@ -47,10 +43,7 @@ class Tree {
                 mn.x + dx, mn.y + dy, mn.z + dz,
             );
         }
-
-        const bufferInfo = twgl.createBufferInfoFromArrays(gl, {position: points});
-        const vao = twgl.createVAOFromBufferInfo(gl, programInfo, bufferInfo);
-        return [bufferInfo, vao];
+        return points;
     }
 
     descendAlongRay(ray) {

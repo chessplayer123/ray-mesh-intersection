@@ -263,7 +263,7 @@ function resizeCanvas() {
     // update center point
     twgl.resizeCanvasToDisplaySize(ui);
     uiContext.beginPath();
-        uiContext.fillStyle = "white";
+        uiContext.fillStyle = "#fed053";
         uiContext.arc(ui.width / 2, ui.height / 2, 3, 0, 2 * Math.PI);
     uiContext.fill();
 }

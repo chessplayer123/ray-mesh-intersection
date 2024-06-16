@@ -103,7 +103,8 @@ void register_shared() {
         );
 
     class_<rmi::Ray<float>>("Ray")
-        .constructor<rmi::Vector3f, rmi::Vector3f>();
+        .constructor<rmi::Vector3f, rmi::Vector3f>()
+        .function("at", &rmi::Ray<float>::at);
 
     function("readMesh", &read_mesh_from_string);
 }
