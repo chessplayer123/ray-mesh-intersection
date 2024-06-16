@@ -95,10 +95,18 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
     TriangularMesh mesh = read_raw_triangular_mesh<double, size_t>(filename);
 
     generator.reset();
-    BENCHMARK_ADVANCED(concat("Linear search ", mesh.size()))(auto meter) {
+    BENCHMARK_ADVANCED(concat("Sequential search ", mesh.size()))(auto meter) {
         auto ray = generator.next_ray();
         meter.measure([&ray, &mesh] { return ray.intersects(mesh); });
     };
+
+    for (int threads_count = 2; threads_count <= 8; threads_count *= 2) {
+        generator.reset();
+        BENCHMARK_ADVANCED(concat("Parallel <", threads_count, "> search ", mesh.size()))(auto meter) {
+            auto ray = generator.next_ray();
+            meter.measure([&ray, &mesh, threads_count] { return rmi::parallel::omp_intersects(ray, mesh, threads_count); });
+        };
+    }
 }
 
 

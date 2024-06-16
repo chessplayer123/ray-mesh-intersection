@@ -176,9 +176,9 @@ public:
         inline constexpr Vector3<float_type> v() const
         { return mesh->template v<vertex_num>(index); }
 
-        index_type index;
+        index_type          index;
         Vector3<float_type> center;
-        const mesh_type* mesh;
+        const mesh_type*    mesh;
     };
 
     using float_t = float_type;

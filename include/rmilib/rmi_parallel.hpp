@@ -29,7 +29,16 @@ std::vector<Vector3<typename T::float_t>> omp_intersects(
     const Ray<typename T::float_t>& ray,
     const Tree<T, N>& tree,
     int threads_count,
-    double epsilon = std::numeric_limits<double>::epsilon()
+    typename T::float_t epsilon = std::numeric_limits<typename T::float_t>::epsilon()
+);
+
+
+template<typename mesh_t, typename float_t, typename index_t>
+std::vector<Vector3<float_t>> omp_intersects(
+    const Ray<float_t>& ray,
+    Mesh<mesh_t, float_t, index_t>& mesh,
+    int threads_count,
+    float_t epsilon = std::numeric_limits<float_t>::epsilon()
 );
 
 
@@ -201,7 +210,7 @@ std::vector<Vector3<typename T::float_t>> omp_intersects(
     const Ray<typename T::float_t>& ray,
     const Tree<T, N>& tree,
     int threads_count,
-    double epsilon
+    typename T::float_t epsilon
 ) {
     const auto& root = tree.top();
     if (!ray.intersects(root.box())) {
@@ -260,6 +269,29 @@ Tree<T, N> omp_build(
     node = std::move(omp_recursive_build<T, N>(Range(begin, end), splitter));
 
     return Tree<T, N>(std::move(node));
+}
+
+
+template<typename mesh_t, typename float_t, typename index_t>
+std::vector<Vector3<float_t>> omp_intersects(
+    const Ray<float_t>& ray,
+    Mesh<mesh_t, float_t, index_t>& mesh,
+    int threads_count,
+    float_t epsilon
+) {
+    std::vector<Vector3<float_t>> intersections;
+
+    #pragma omp parallel for shared(mesh, ray, intersections)
+    for (const auto& triangle : mesh) {
+        auto intersection = ray.template intersects<mesh_t>(triangle, epsilon);
+
+        if (intersection.has_value()) {
+            #pragma omp critical
+            intersections.push_back(intersection.value());
+        }
+    }
+
+    return intersections;
 }
 
 } // namespace rmi
