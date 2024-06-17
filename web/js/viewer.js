@@ -4,10 +4,10 @@ const menu = document.getElementById("menu");
 const checkbox = document.getElementById("traversal-checkbox");
 
 const [gl, programInfo] = initializeGL(canvas);
-const mesh = new Mesh(gl);
 const handler = new IntersectionHandler();
-const tree = new Tree(parseInt(document.querySelector('input[name="tree"]:checked').value));
 const camera = new Camera();
+let mesh = null;
+let tree = null;
 
 const TARGET_FRAMERATE = 120;
 const STEP_UNITS = 0.2;
@@ -36,7 +36,7 @@ function loadParallelLibVersion() {
 
         headersScript.onload = () => {
             useParallel = true;
-            Module.onRuntimeInitialized = start;
+            Module.onRuntimeInitialized = main;
         }
 
         headersScript.onerror = () => {
@@ -59,7 +59,7 @@ function loadSeqLibVersion() {
 
     libScript.onload = () => {
         useParallel = false;
-        Module.onRuntimeInitialized = start;
+        Module.onRuntimeInitialized = main;
     }
 
     libScript.onerror = () => {
@@ -69,7 +69,7 @@ function loadSeqLibVersion() {
 
 
 // Remove dialog, lock or unlock slider and setup canvas
-function start() {
+function main() {
     document.getElementById("dialog").remove();
     threadsCountSlider.disabled = !useParallel;
     menu.style.visibility = "visible";
@@ -85,16 +85,30 @@ function start() {
 }
 
 
-function onRadioChanged(option) {
-    if (mesh.isLoaded()) {
-        tree.build(mesh, parseInt(option.value));
-        handler.clear();
+function updateTree() {
+    if (!mesh) return;
+
+    handler.clear();
+
+    let splitter;
+    switch (document.querySelector('input[name="splitter"]:checked').value) {
+    case "sah":    splitter = Module.Splitter.SAH;    break;
+    case "middle": splitter = Module.Splitter.Middle; break;
     }
+
+    let data;
+    switch (document.querySelector('input[name="tree"]:checked').value) {
+    case "kdtree":   data = Module.KDTree.forMesh(mesh.data, splitter);   break;
+    case "quadtree": data = Module.Quadtree.forMesh(mesh.data, splitter); break;
+    case "octree":   data = Module.Octree.forMesh(mesh.data, splitter);   break;
+    }
+
+    tree = new Tree(data);
 }
 
 
 ui.onclick = () => {
-    if (mesh.isLoaded() && !isViewerActive()) {
+    if (mesh && !isViewerActive()) {
         ui.requestPointerLock();
     } else if (isViewerActive()) {
         const ray = camera.eyeRay();
@@ -180,8 +194,8 @@ document.getElementById("file-upload").onchange = function() {
 
     reader.onload = () => {
         try {
-            mesh.update(gl, programInfo, file.name, reader.result);
-            tree.build(mesh, parseInt(document.querySelector('input[name="tree"]:checked').value));
+            mesh = new Mesh(Module.readMesh(file.name, reader.result));
+            updateTree();
             paint();
         } catch(err) {
             alert("Unsupported mesh format");
@@ -248,8 +262,8 @@ function update(curTime) {
 function paint() {
     gl.clear(gl.COLOR_BUFFER_BIT);
     camera.prepareScene();
-    if (mesh.isLoaded()) {
-        mesh.draw(gl);
+    if (mesh) {
+        mesh.draw();
         handler.draw();
     }
 }

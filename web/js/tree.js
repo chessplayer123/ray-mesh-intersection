@@ -1,7 +1,7 @@
 class Tree {
-    constructor() {
-        this.nodes = [];
-        this.data = null;
+    constructor(data) {
+        this.data = data;
+        this.nodes = [this.data.root()];
     }
 
     createWireframe() {
@@ -78,14 +78,5 @@ class Tree {
 
     par_intersects(ray, threadsCount) {
         return this.data.par_intersects(ray, threadsCount);
-    }
-
-    build(mesh, treeType) {
-        switch (treeType) {
-            case 1: this.data = Module.KDTree.forMesh(mesh.data);   break;
-            case 2: this.data = Module.Quadtree.forMesh(mesh.data); break;
-            case 3: this.data = Module.Octree.forMesh(mesh.data);   break;
-        }
-        this.ascendToRoot();
     }
 }

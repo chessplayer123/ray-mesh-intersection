@@ -580,6 +580,10 @@ std::vector<Subrange<typename T::iterator>> MidSplitter<T, N>::operator()(
     const Range<typename T::iterator>& range,
     int depth
 ) const {
+    if (depth >= depth_limit) {
+        return {Subrange(range.begin(), range.end(), false)};
+    }
+
     std::vector<Subrange<typename T::iterator>> subranges;
     std::vector<std::pair<Range<typename T::iterator>, int>> unsplitted {{range, N}};
 
@@ -588,7 +592,7 @@ std::vector<Subrange<typename T::iterator>> MidSplitter<T, N>::operator()(
         unsplitted.pop_back();
 
         auto length = cur.length();
-        if (depth >= depth_limit || length <= (1 << N)) {
+        if (length <= (1 << N)) {
             subranges.emplace_back(cur.begin(), cur.end(), false);
             continue;
         }
@@ -638,7 +642,11 @@ typename Tree<T, N>::Node Tree<T, N>::Node::build(
 // Ray implementation
 template<typename float_t>
 inline Vector3<float_t> Ray<float_t>::at(double t) const {
-    return origin + vector * t;
+    return Vector3<float_t>(
+        origin.x() + vector.x() * t,
+        origin.y() + vector.y() * t,
+        origin.z() + vector.z() * t
+    );
 }
 
 template<typename float_t>

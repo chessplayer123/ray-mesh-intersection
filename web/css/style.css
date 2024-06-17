@@ -40,6 +40,13 @@ input {
     flex-direction: row;
 }
 
+.selector-box {
+    text-align: center;
+    border: 1px solid #fed053;
+    border-radius: 8px;
+    padding: 5px;
+}
+
 .canvas {
     position: fixed;
     width: 100%;

@@ -28,21 +28,39 @@
                 <output>1 thread(-s)</output>
             </div>
 
-            <div class="row hor-options">
-                <span class="option">
-                    <input id="kdtree-option" type="radio" name="tree" checked value=1 onclick="onRadioChanged(this);"/>
-                    <label for="kdtree-option" class="label">kd-tree</label>
-                </span>
+            <div class="row selector-box">
+                Tree
+                <div class="hor-options">
+                    <span class="option">
+                        <input id="kdtree-option" type="radio" name="tree" checked value="kdtree" onclick="updateTree()"/>
+                        <label for="kdtree-option" class="label">KD-Tree</label>
+                    </span>
 
-                <span class="option">
-                    <input id="quadtree-option" type="radio" name="tree" value=2 onclick="onRadioChanged(this);"/>
-                    <label for="quadtree-option" class="label">quadtree</label>
-                </span>
+                    <span class="option">
+                        <input id="quadtree-option" type="radio" name="tree" value="quadtree" onclick="updateTree()"/>
+                        <label for="quadtree-option" class="label">Quadtree</label>
+                    </span>
 
-                <span class="option">
-                    <input id="octree-option" type="radio" name="tree" value=3 onclick="onRadioChanged(this);"/>
-                    <label for="octree-option" class="label">octree</label>
-                </span>
+                    <span class="option">
+                        <input id="octree-option" type="radio" name="tree" value="octree" onclick="updateTree()"/>
+                        <label for="octree-option" class="label">Octree</label>
+                    </span>
+                </div>
+            </div>
+
+            <div class="row selector-box">
+                Splitter
+                <div class="hor-options">
+                    <span class="option">
+                        <input id="sah-option" type="radio" name="splitter" checked value="sah" onclick="updateTree()"/>
+                        <label for="sah-option" class="label">SAH</label>
+                    </span>
+
+                    <span class="option">
+                        <input id="mid-option" type="radio" name="splitter" value="middle" onclick="updateTree()"/>
+                        <label for="mid-option" class="label">Middle</label>
+                    </span>
+                </div>
             </div>
 
             <div class="row option">

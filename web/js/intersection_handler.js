@@ -9,12 +9,14 @@ function toFixed(num, digitsCount=2) {
 
 class IntersectionHandler {
     constructor() {
+        this.coords = [];
         this.ray = null;
         this.tree = null;
-        this.coords = [];
+        this.points = null;
+        this.boxes = null;
 
-        this.points = new Drawable([0.96, 0.3, 0.0, 1], gl.POINTS);
-        this.boxes = new Drawable([0.5, 0.5, 1, 1], gl.LINES);
+        this.boxesColor = [0.5, 0.5, 1, 1];
+        this.pointsColor = [0.96, 0.3, 0.0, 1];
     }
 
     extendPoints(points) {
@@ -28,7 +30,7 @@ class IntersectionHandler {
             this.coords.push(p.x, p.y, p.z);
             pointsRepr.push(`\n  (${toFixed(p.x)}, ${toFixed(p.y)}, ${toFixed(p.z)})`)
         }
-        this.points.update({position: this.coords});
+        this.points = new Drawable({position: this.coords}, this.pointsColor, gl.POINTS);
 
         intersectionsData.innerHTML += pointsRepr.join();
     }
@@ -66,7 +68,7 @@ class IntersectionHandler {
         this.tree = tree;
         this.ray = ray;
 
-        this.boxes.update({position: this.tree.createWireframe()});
+        this.boxes = new Drawable({position: this.tree.createWireframe()}, this.boxesColor, gl.LINES);
 
         let data = [
             `Position  (${toFixed(camera.pos[0])}, ${toFixed(camera.pos[1])}, ${toFixed(camera.pos[2])})`,
@@ -82,11 +84,11 @@ class IntersectionHandler {
             const intersections = this.tree.descendAlongRay(this.ray);
             this.extendPoints(intersections);
 
-            const lines = this.tree.createWireframe();
-            if (lines.length == 0) {
-                this.boxes.clear();
+            const wireframe = this.tree.createWireframe();
+            if (wireframe.length == 0) {
+                this.boxes = null;
             } else {
-                this.boxes.update({position: lines});
+                this.boxes = new Drawable({position: wireframe}, this.boxesColor, gl.LINES);
             }
         }
     }
@@ -94,17 +96,16 @@ class IntersectionHandler {
     clear() {
         intersectionsData.style.visibility = "hidden";
 
+        this.coords = [];
         this.ray = null;
         this.tree = null;
-
-        this.coords = [];
-        this.points.clear();
-        this.boxes.clear();
+        this.points = null;
+        this.boxes = null;
     }
 
     draw() {
-        this.points.draw();
-        this.boxes.draw();
+        if (this.points) this.points.draw();
+        if (this.boxes)  this.boxes.draw();
     }
 }
 

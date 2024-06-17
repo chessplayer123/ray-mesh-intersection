@@ -14,6 +14,12 @@ WebGLMesh read_mesh_from_string(const std::string& filename, const std::string& 
 }
 
 
+enum class SplitterType {
+    SAH,
+    Middle,
+};
+
+
 template<int N>
 struct NodeWrapper {
     inline bool is_leaf() const {
@@ -58,20 +64,27 @@ auto register_tree(const std::string& name) {
                 }
                 return output;
             }
-        );
+        )
+        ;
 
     emscripten::register_vector<NodeWrapper<N>>((name + "Nodes").c_str());
 
     return emscripten::class_<rmi::Tree<WebGLMesh, N>>(name.c_str())
-        .class_function("forMesh", +[](WebGLMesh& mesh) {
-            return rmi::Tree<WebGLMesh, N>::for_mesh(mesh.begin(), mesh.end());
+        .class_function("forMesh", +[](WebGLMesh& mesh, SplitterType splitter) {
+            switch (splitter) {
+            case SplitterType::SAH:
+                return rmi::Tree<WebGLMesh, N>::for_mesh(mesh.begin(), mesh.end(), rmi::SAHSplitter<WebGLMesh, N>());
+            case SplitterType::Middle:
+                return rmi::Tree<WebGLMesh, N>::for_mesh(mesh.begin(), mesh.end(), rmi::MidSplitter<WebGLMesh, N>());
+            }
         })
         .function("intersects", +[](const rmi::Tree<WebGLMesh, N>& tree, const rmi::Ray<float>& ray) {
             return ray.intersects(tree);
         })
         .function("root", +[](const rmi::Tree<WebGLMesh, N>& tree) {
             return NodeWrapper<N>(&tree.top());
-        });
+        })
+        ;
 }
 
 
@@ -82,9 +95,15 @@ void register_shared() {
         .constructor<float, float, float>()
         .property("x", &rmi::Vector3f::x)
         .property("y", &rmi::Vector3f::y)
-        .property("z", &rmi::Vector3f::z);
+        .property("z", &rmi::Vector3f::z)
+        ;
 
     register_vector<rmi::Vector3f>("PointsList");
+
+    enum_<SplitterType>("Splitter")
+        .value("SAH",    SplitterType::SAH)
+        .value("Middle", SplitterType::Middle)
+        ;
 
     class_<WebGLMesh>("Mesh")
         .property("size", &WebGLMesh::size)
@@ -93,18 +112,21 @@ void register_shared() {
         })
         .function("indices", +[](const WebGLMesh& mesh) {
             return val(typed_memory_view(mesh.indices().size(), mesh.indices().data()));
-        });
+        })
+        ;
 
     class_<rmi::AABBox<float>>("AABB")
         .property("min", &rmi::AABBox<float>::min)
         .property("max", &rmi::AABBox<float>::max)
         .function("intersects",
             +[](const rmi::AABBox<float>& aabb, const rmi::Ray<float>& ray) { return ray.intersects(aabb); }
-        );
+        )
+        ;
 
     class_<rmi::Ray<float>>("Ray")
         .constructor<rmi::Vector3f, rmi::Vector3f>()
-        .function("at", &rmi::Ray<float>::at);
+        .function("at", &rmi::Ray<float>::at)
+        ;
 
     function("readMesh", &read_mesh_from_string);
 }
