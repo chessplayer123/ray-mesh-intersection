@@ -116,13 +116,13 @@ private:
         std::optional<const Node*> next = pop_node(thread_id);
 
         while(next) {
-            const Node* cur = next.value();
+            const Node* cur = *next;
 
             if (cur->is_leaf()) {
                 for (const auto& triangle : cur->triangles()) {
                     auto intersection = ray.template intersects<T>(triangle);
-                    if (intersection.has_value()) {
-                        results[thread_id].push_back(intersection.value());
+                    if (intersection) {
+                        results[thread_id].push_back(std::move(*intersection));
                     }
                 }
                 next = pop_node(thread_id);
@@ -188,9 +188,9 @@ void omp_recursive_intersects(
     if (node->is_leaf()) {
         for (const auto& cur : node->triangles()) {
             auto intersection = ray.template intersects<T>(cur, epsilon);
-            if (intersection.has_value()) {
+            if (intersection) {
                 #pragma omp critical
-                output.push_back(intersection.value());
+                output.push_back(std::move(*intersection));
             }
         }
     } else {
@@ -286,9 +286,9 @@ std::vector<Vector3<float_t>> omp_intersects(
     for (const auto& triangle : mesh) {
         auto intersection = ray.template intersects<mesh_t>(triangle, epsilon);
 
-        if (intersection.has_value()) {
+        if (intersection) {
             #pragma omp critical
-            intersections.push_back(intersection.value());
+            intersections.push_back(std::move(*intersection));
         }
     }
 

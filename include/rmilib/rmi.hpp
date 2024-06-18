@@ -113,8 +113,8 @@ struct SAHSplitter {
 
 
 template<typename T, int N>
-struct MidSplitter {
-    MidSplitter(int depth_limit = 16): depth_limit(depth_limit) {}
+struct MedianSplitter {
+    MedianSplitter(int depth_limit = 16): depth_limit(depth_limit) {}
 
     std::vector<Subrange<typename T::iterator>> operator()(
         const Range<typename T::iterator>& range,
@@ -388,22 +388,20 @@ inline T Vector3<T>::operator[](int index) const {
 // AABBox implementation
 template<typename T>
 AABBox<typename T::float_t> get_bounding_box(const typename T::Element& element) {
-    using std::min, std::max;
-
     const Vector3 v1 = element.template v<0>();
     const Vector3 v2 = element.template v<1>();
     const Vector3 v3 = element.template v<2>();
 
     return {
         Vector3(
-            min(v1.x(), min(v2.x(), v3.x())),
-            min(v1.y(), min(v2.y(), v3.y())),
-            min(v1.z(), min(v2.z(), v3.z()))
+            std::min(v1.x(), std::min(v2.x(), v3.x())),
+            std::min(v1.y(), std::min(v2.y(), v3.y())),
+            std::min(v1.z(), std::min(v2.z(), v3.z()))
         ),
         Vector3(
-            max(v1.x(), max(v2.x(), v3.x())),
-            max(v1.y(), max(v2.y(), v3.y())),
-            max(v1.z(), max(v2.z(), v3.z()))
+            std::max(v1.x(), std::max(v2.x(), v3.x())),
+            std::max(v1.y(), std::max(v2.y(), v3.y())),
+            std::max(v1.z(), std::max(v2.z(), v3.z()))
         )
     };
 
@@ -510,7 +508,7 @@ std::pair<typename T::iterator, double> SAHSplitter<T, N>::find_min_sah(
     std::vector<AABBox<typename T::float_t>> suf(length + 1);
 
     typename T::iterator::difference_type i = 0;
-    for (auto it = range.begin(), rit = range.end() - 1; it != range.end(); ++it, ++i, --rit) {
+    for (auto it = range.begin(), rit = std::prev(range.end()); it != range.end(); ++it, ++i, --rit) {
         pref[i + 1] = pref[i] + get_bounding_box<T>(*it);
         suf[i + 1] = suf[i] + get_bounding_box<T>(*rit);
     }
@@ -536,7 +534,7 @@ std::vector<Subrange<typename T::iterator>> SAHSplitter<T, N>::operator()(
     std::vector<std::pair<Range<typename T::iterator>, int>> unsplitted {{range, N}};
 
     while (!unsplitted.empty()) {
-        auto [cur, splits_remained] = unsplitted.back();
+        auto [cur, splits_remained] = std::move(unsplitted.back());
         unsplitted.pop_back();
 
         int splitting_axis = 0;
@@ -576,7 +574,7 @@ std::vector<Subrange<typename T::iterator>> SAHSplitter<T, N>::operator()(
 
 
 template<typename T, int N>
-std::vector<Subrange<typename T::iterator>> MidSplitter<T, N>::operator()(
+std::vector<Subrange<typename T::iterator>> MedianSplitter<T, N>::operator()(
     const Range<typename T::iterator>& range,
     int depth
 ) const {
@@ -588,7 +586,7 @@ std::vector<Subrange<typename T::iterator>> MidSplitter<T, N>::operator()(
     std::vector<std::pair<Range<typename T::iterator>, int>> unsplitted {{range, N}};
 
     while (!unsplitted.empty()) {
-        auto [cur, splits_remained] = unsplitted.back();
+        auto [cur, splits_remained] = std::move(unsplitted.back());
         unsplitted.pop_back();
 
         auto length = cur.length();
@@ -716,8 +714,8 @@ void Ray<float_t>::recursive_intersects(
     if (node.is_leaf()) {
         for (const auto& cur : node.triangles()) {
             auto intersection = intersects<T>(cur, epsilon);
-            if (intersection.has_value()) {
-                output.push_back(intersection.value());
+            if (intersection) {
+                output.push_back(std::move(*intersection));
             }
         }
     } else {
@@ -761,8 +759,8 @@ std::vector<Vector3<float_t>> Ray<float_t>::intersects(
     for (const auto& cur : mesh) {
         auto intersection = intersects<mesh_t>(cur, epsilon);
 
-        if (intersection.has_value()) {
-            intersections.push_back(intersection.value());
+        if (intersection) {
+            intersections.push_back(std::move(*intersection));
         }
     }
 
