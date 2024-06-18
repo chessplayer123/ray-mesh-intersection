@@ -16,7 +16,7 @@ WebGLMesh read_mesh_from_string(const std::string& filename, const std::string& 
 
 enum class SplitterType {
     SAH,
-    Middle,
+    Median,
 };
 
 
@@ -74,8 +74,8 @@ auto register_tree(const std::string& name) {
             switch (splitter) {
             case SplitterType::SAH:
                 return rmi::Tree<WebGLMesh, N>::for_mesh(mesh.begin(), mesh.end(), rmi::SAHSplitter<WebGLMesh, N>());
-            case SplitterType::Middle:
-                return rmi::Tree<WebGLMesh, N>::for_mesh(mesh.begin(), mesh.end(), rmi::MidSplitter<WebGLMesh, N>());
+            case SplitterType::Median:
+                return rmi::Tree<WebGLMesh, N>::for_mesh(mesh.begin(), mesh.end(), rmi::MedianSplitter<WebGLMesh, N>());
             }
         })
         .function("intersects", +[](const rmi::Tree<WebGLMesh, N>& tree, const rmi::Ray<float>& ray) {
@@ -102,7 +102,7 @@ void register_shared() {
 
     enum_<SplitterType>("Splitter")
         .value("SAH",    SplitterType::SAH)
-        .value("Middle", SplitterType::Middle)
+        .value("Median", SplitterType::Median)
         ;
 
     class_<WebGLMesh>("Mesh")

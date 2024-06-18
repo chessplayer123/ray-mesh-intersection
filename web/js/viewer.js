@@ -93,7 +93,7 @@ function updateTree() {
     let splitter;
     switch (document.querySelector('input[name="splitter"]:checked').value) {
     case "sah":    splitter = Module.Splitter.SAH;    break;
-    case "middle": splitter = Module.Splitter.Middle; break;
+    case "median": splitter = Module.Splitter.Median; break;
     }
 
     let data;
@@ -104,6 +104,18 @@ function updateTree() {
     }
 
     tree = new Tree(data);
+}
+
+
+function takeScreenShot() {
+    const currentDate = new Date();
+    const link = document.createElement('a');
+    paint();
+    link.download = `rmi_screenshot_${currentDate.toISOString()}.png`;
+    link.href = canvas.toDataURL({
+        format: "png",
+    });
+    link.click();
 }
 
 
@@ -155,6 +167,7 @@ onkeydown = (event) => {
         case "KeyD":      moveLeft    = -STEP_UNITS; break;
         case "Space":     moveUp      =  STEP_UNITS; break;
         case "ShiftLeft": moveUp      = -STEP_UNITS; break;
+        case "Enter":     takeScreenShot();          break;
     }
 };
 
