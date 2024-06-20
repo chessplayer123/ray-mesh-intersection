@@ -16,22 +16,21 @@ std::string concat(const Args&... args) {
 }
 
 
-template<int N>
-using Splitter = rmi::SAHSplitter<TriangularMesh>;
+using Splitter = rmi::MedianSplitter<TriangularMesh>;
+constexpr const char* MESH_FILEPATH = "../../data/Fantasy_Castle.stl";
 
 
 TEST_CASE("KD-Tree Building", "[benchmark][kdtree]") {
-    constexpr const char* MESH_FILEPATH = "../../data/Fantasy_Castle.stl";
     TriangularMesh mesh = read_raw_triangular_mesh<double, size_t>(MESH_FILEPATH);
 
     BENCHMARK(concat("KD-Tree Build Benchmark (", mesh.size(), " polygons)")) {
-        return rmi::KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end(), Splitter<1>());
+        return rmi::KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end(), Splitter());
     };
 
 #ifdef RMI_INCLUDE_OMP
     for (int threads_count = 2; threads_count <= 8; threads_count *= 2) {
         BENCHMARK(concat("KD-Tree Parallel <", threads_count, "> Build Benchmark (", mesh.size(), " polygons)")) {
-            return rmi::parallel::omp_build<TriangularMesh, 1>(mesh.begin(), mesh.end(), threads_count, Splitter<1>());
+            return rmi::parallel::omp_build<TriangularMesh>(mesh.begin(), mesh.end(), threads_count, Splitter());
         };
     }
 #endif

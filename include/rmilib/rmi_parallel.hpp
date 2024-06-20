@@ -230,29 +230,30 @@ std::vector<Vector3<typename T::float_t>> omp_intersects(
 }
 
 
-template<typename T, int N, typename Splitter>
-typename KDTree<T>::Node omp_recursive_build(
+template<typename T, typename Splitter>
+std::unique_ptr<typename KDTree<T>::Node> omp_recursive_build(
     const Range<typename T::iterator>& range,
     int depth,
     const Splitter& splitter
 ) {
-    auto subranges = splitter(range, depth);
-    std::vector<typename KDTree<T>::Node> children;
-    AABBox<typename T::float_t> aabb;
-
-    #pragma omp taskloop shared(children, aabb, subranges)
-    for (const auto& subrange : subranges) {
-        auto child = subrange.is_splittable() ?
-            omp_recursive_build<T>(subrange, depth + 1, splitter) :
-            typename KDTree<T>::Node(get_bounding_box<T>(subrange), subrange);
-        #pragma omp critical
-        {
-            aabb += child.box();
-            children.push_back(std::move(child));
-        }
+    auto split = splitter(range, depth);
+    if (split == range.end()) {
+        return std::make_unique<typename KDTree<T>::Node>(get_bounding_box<T>(range), range);
     }
+    std::unique_ptr<typename KDTree<T>::Node> left;
+    std::unique_ptr<typename KDTree<T>::Node> right;
 
-    return typename KDTree<T>::Node(aabb, range, std::move(children));
+    #pragma omp task shared(left)
+    left = std::move(omp_recursive_build<T>(Range(range.begin(), split), depth + 1, splitter));
+    #pragma omp task shared(right)
+    right = std::move(omp_recursive_build<T>(Range(split, range.end()), depth + 1, splitter));
+    #pragma omp taskwait
+
+    return std::make_unique<typename KDTree<T>::Node>(
+        left->box() + right->box(),
+        range,
+        std::move(left), std::move(right)
+    );
 }
 
 
@@ -263,8 +264,8 @@ KDTree<T> omp_build(
     int threads_count,
     const Splitter& splitter
 ) {
-    typename KDTree<T>::Node node;
-    #pragma omp parallel num_threads(threads_count)
+    std::unique_ptr<typename KDTree<T>::Node> node;
+    #pragma omp parallel num_threads(threads_count) shared(node)
     #pragma omp single
     node = std::move(omp_recursive_build<T>(Range(begin, end), 0, splitter));
 

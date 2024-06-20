@@ -118,8 +118,6 @@ public:
 
     class Node {
     public:
-        Node() = default;
-
         Node(
             AABBox<typename T::float_t> box,
             Range<mesh_iterator> range,
@@ -526,7 +524,7 @@ typename T::iterator SAHSplitter<T>::operator()(
         });
     }
 
-    if (split == range.end() || range.length() <= threshold) {
+    if (range.length() <= threshold) {
         return range.end();
     }
     return split;

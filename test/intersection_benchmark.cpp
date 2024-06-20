@@ -16,8 +16,7 @@
 const std::string filename = "../../data/Fantasy_Castle.stl";
 TriangularMesh mesh = read_raw_triangular_mesh<double, size_t>(filename);
 
-template<int N>
-using Splitter = rmi::MedianSplitter<TriangularMesh>;
+using Splitter = rmi::SAHSplitter<TriangularMesh>;
 
 
 class SampleGenerator {
@@ -71,7 +70,7 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
 
 
 TEST_CASE("KD-Tree intersection", "[benchmark][ray][kdtree]") {
-    auto tree = rmi::KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end(), Splitter<1>());
+    auto tree = rmi::KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end(), Splitter());
 
     generator.reset();
     BENCHMARK_ADVANCED(concat("Sync KD-Tree search "))(auto meter) {
