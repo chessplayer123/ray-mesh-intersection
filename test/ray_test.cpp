@@ -165,8 +165,23 @@ TEST_CASE("Ray and triangular mesh intersection methods", "[ray][mesh][kdtree]")
             );
         }
 
-        WHEN("Finding intersections with kdtree") {
-            auto kdtree = rmi::KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
+        WHEN("Finding intersections with kdtree built with SAH") {
+            auto kdtree = rmi::KDTree<TriangularMesh>::for_mesh(
+                mesh.begin(), mesh.end(),
+                rmi::SAHSplitter<TriangularMesh>()
+            );
+            auto actual_intersections = ray.intersects(kdtree);
+            REQUIRE_THAT(
+                actual_intersections,
+                Catch::Matchers::UnorderedEquals(expected_intersections)
+            );
+        }
+
+        WHEN("Finding intersections with kdtree built with mid splitter") {
+            auto kdtree = rmi::KDTree<TriangularMesh>::for_mesh(
+                mesh.begin(), mesh.end(),
+                rmi::MedianSplitter<TriangularMesh>()
+            );
             auto actual_intersections = ray.intersects(kdtree);
             REQUIRE_THAT(
                 actual_intersections,
@@ -195,23 +210,5 @@ TEST_CASE("Ray and triangular mesh intersection methods", "[ray][mesh][kdtree]")
             );
         }
         #endif
-
-        WHEN("Finding intersections with quadtree") {
-            auto kdtree = rmi::Quadtree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
-            auto actual_intersections = ray.intersects(kdtree);
-            REQUIRE_THAT(
-                actual_intersections,
-                Catch::Matchers::UnorderedEquals(expected_intersections)
-            );
-        }
-
-        WHEN("Finding intersections with octree") {
-            auto kdtree = rmi::Octree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
-            auto actual_intersections = ray.intersects(kdtree);
-            REQUIRE_THAT(
-                actual_intersections,
-                Catch::Matchers::UnorderedEquals(expected_intersections)
-            );
-        }
     }
 }

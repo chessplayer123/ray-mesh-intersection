@@ -7,10 +7,10 @@
 #    include <thread>
 namespace rmi::parallel {
 
-template<typename T, int N>
+template<typename T>
 std::vector<Vector3<typename T::float_t>> pool_intersects(
     const Ray<typename T::float_t>& ray,
-    const Tree<T, N>& tree,
+    const KDTree<T>& tree,
     int threads_count
 );
 
@@ -24,10 +24,10 @@ std::vector<Vector3<typename T::float_t>> pool_intersects(
 #    include <omp.h>
 namespace rmi::parallel {
 
-template<typename T, int N>
+template<typename T>
 std::vector<Vector3<typename T::float_t>> omp_intersects(
     const Ray<typename T::float_t>& ray,
-    const Tree<T, N>& tree,
+    const KDTree<T>& tree,
     int threads_count,
     typename T::float_t epsilon = std::numeric_limits<typename T::float_t>::epsilon()
 );
@@ -42,8 +42,8 @@ std::vector<Vector3<float_t>> omp_intersects(
 );
 
 
-template<typename T, int N, typename Splitter = rmi::SAHSplitter<T, N>>
-Tree<T, N> omp_build(
+template<typename T, typename Splitter = rmi::SAHSplitter<T>>
+KDTree<T> omp_build(
     typename T::iterator begin,
     typename T::iterator end,
     int threads_count,
@@ -58,10 +58,10 @@ Tree<T, N> omp_build(
 #ifdef RMI_INCLUDE_POOL
 namespace rmi::parallel {
 
-template<typename T, int N>
+template<typename T>
 class ThreadPool {
 public:
-    typedef typename Tree<T, N>::Node Node;
+    typedef typename KDTree<T>::Node Node;
     typedef typename T::float_t float_t;
     typedef typename T::index_t index_t;
 
@@ -120,21 +120,22 @@ private:
 
             if (cur->is_leaf()) {
                 for (const auto& triangle : cur->triangles()) {
-                    auto intersection = ray.template intersects<T>(triangle);
-                    if (intersection) {
+                    if (auto intersection = ray.template intersects<T>(triangle); intersection) {
                         results[thread_id].push_back(std::move(*intersection));
                     }
                 }
                 next = pop_node(thread_id);
             } else {
                 next = std::nullopt;
-
-                for (const auto& child : cur->child_nodes()) {
-                    if (ray.intersects(child.box())) {
-                        if (next) queues[thread_id].push(&child);
-                        else next = &child;
-                    }
+                if (cur->has_left() && ray.intersects(cur->left().box())) {
+                    next = &cur->left();
                 }
+
+                if (cur->has_right() && ray.intersects(cur->right().box())) {
+                    if (next) queues[thread_id].push(&cur->right());
+                    else next = &cur->right();
+                }
+
                 if (!next) {
                     next = pop_node(thread_id);
                 }
@@ -152,10 +153,10 @@ private:
     const Ray<float_t>& ray;
 };
 
-template<typename T, int N>
+template<typename T>
 std::vector<Vector3<typename T::float_t>> pool_intersects(
     const Ray<typename T::float_t>& ray,
-    const Tree<T, N>& tree,
+    const KDTree<T>& tree,
     int threads_count
 ) {
     const auto& root = tree.top();
@@ -163,7 +164,7 @@ std::vector<Vector3<typename T::float_t>> pool_intersects(
         return {};
     }
 
-    ThreadPool<T, N> pool(ray, &root, threads_count);
+    ThreadPool<T> pool(ray, &root, threads_count);
     return pool.wait_result();
 }
 
@@ -178,37 +179,38 @@ std::vector<Vector3<typename T::float_t>> pool_intersects(
 #    include <omp.h>
 namespace rmi::parallel {
 
-template<typename T, int N>
+template<typename T>
 void omp_recursive_intersects(
     const Ray<typename T::float_t>& ray,
-    const typename Tree<T, N>::Node* node,
+    const typename KDTree<T>::Node* node,
     std::vector<Vector3<typename T::float_t>>& output,
     double epsilon
 ) {
     if (node->is_leaf()) {
         for (const auto& cur : node->triangles()) {
-            auto intersection = ray.template intersects<T>(cur, epsilon);
-            if (intersection) {
+            if (auto intersection = ray.template intersects<T>(cur, epsilon); intersection) {
                 #pragma omp critical
                 output.push_back(std::move(*intersection));
             }
         }
     } else {
-        for (const auto& child : node->child_nodes()) {
-            if (ray.intersects(child.box())) {
-                const auto* child_ptr = &child;
-                #pragma omp task shared(output)
-                omp_recursive_intersects<T, N>(ray, child_ptr, output, epsilon);
-            }
+        if (node->has_left() && ray.intersects(node->left().box())) {
+            #pragma omp task shared(output)
+            omp_recursive_intersects<T>(ray, &node->left(), output, epsilon);
+        }
+
+        if (node->has_right() && ray.intersects(node->right().box())) {
+            #pragma omp task shared(output)
+            omp_recursive_intersects<T>(ray, &node->right(), output, epsilon);
         }
     }
 }
 
 
-template<typename T, int N>
+template<typename T>
 std::vector<Vector3<typename T::float_t>> omp_intersects(
     const Ray<typename T::float_t>& ray,
-    const Tree<T, N>& tree,
+    const KDTree<T>& tree,
     int threads_count,
     typename T::float_t epsilon
 ) {
@@ -221,7 +223,7 @@ std::vector<Vector3<typename T::float_t>> omp_intersects(
 
     #pragma omp parallel shared(output) num_threads(threads_count)
     #pragma omp single
-    omp_recursive_intersects<T, N>(ray, &root, output, epsilon);
+    omp_recursive_intersects<T>(ray, &root, output, epsilon);
     #pragma omp taskwait
 
     return output;
@@ -229,20 +231,20 @@ std::vector<Vector3<typename T::float_t>> omp_intersects(
 
 
 template<typename T, int N, typename Splitter>
-typename Tree<T, N>::Node omp_recursive_build(
+typename KDTree<T>::Node omp_recursive_build(
     const Range<typename T::iterator>& range,
     int depth,
     const Splitter& splitter
 ) {
     auto subranges = splitter(range, depth);
-    std::vector<typename Tree<T, N>::Node> children;
+    std::vector<typename KDTree<T>::Node> children;
     AABBox<typename T::float_t> aabb;
 
     #pragma omp taskloop shared(children, aabb, subranges)
     for (const auto& subrange : subranges) {
         auto child = subrange.is_splittable() ?
-            omp_recursive_build<T, N>(subrange, depth + 1, splitter) :
-            typename Tree<T, N>::Node(get_bounding_box<T>(subrange), subrange);
+            omp_recursive_build<T>(subrange, depth + 1, splitter) :
+            typename KDTree<T>::Node(get_bounding_box<T>(subrange), subrange);
         #pragma omp critical
         {
             aabb += child.box();
@@ -250,26 +252,23 @@ typename Tree<T, N>::Node omp_recursive_build(
         }
     }
 
-    return typename Tree<T, N>::Node(aabb, range, std::move(children));
+    return typename KDTree<T>::Node(aabb, range, std::move(children));
 }
 
 
-template<typename T, int N, typename Splitter>
-Tree<T, N> omp_build(
+template<typename T, typename Splitter>
+KDTree<T> omp_build(
     typename T::iterator begin,
     typename T::iterator end,
     int threads_count,
     const Splitter& splitter
 ) {
-    typename Tree<T, N>::Node node(
-        AABBox<typename T::float_t>(),
-        Range(end, end)
-    );
+    typename KDTree<T>::Node node;
     #pragma omp parallel num_threads(threads_count)
     #pragma omp single
-    node = std::move(omp_recursive_build<T, N>(Range(begin, end), 0, splitter));
+    node = std::move(omp_recursive_build<T>(Range(begin, end), 0, splitter));
 
-    return Tree<T, N>(std::move(node));
+    return KDTree<T>(std::move(node));
 }
 
 
@@ -284,9 +283,7 @@ std::vector<Vector3<float_t>> omp_intersects(
 
     #pragma omp parallel for shared(mesh, ray, intersections) num_threads(threads_count)
     for (const auto& triangle : mesh) {
-        auto intersection = ray.template intersects<mesh_t>(triangle, epsilon);
-
-        if (intersection) {
+        if (auto intersection = ray.template intersects<mesh_t>(triangle, epsilon); intersection) {
             #pragma omp critical
             intersections.push_back(std::move(*intersection));
         }

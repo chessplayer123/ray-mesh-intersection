@@ -82,24 +82,10 @@ private:
 
 
 template<typename T>
-class Subrange : public Range<T> {
-public:
-    Subrange(T begin, T end, bool splittable):
-        Range<T>(begin, end),
-        splittable(splittable)
-    {}
-
-    inline bool is_splittable() const { return splittable; }
-private:
-    bool splittable;
-};
-
-
-template<typename T, int N>
 struct SAHSplitter {
     SAHSplitter(int threshold = 16): threshold(threshold) {}
 
-    std::vector<Subrange<typename T::iterator>> operator()(
+    typename T::iterator operator()(
         const Range<typename T::iterator>& range,
         int depth
     ) const;
@@ -112,11 +98,11 @@ struct SAHSplitter {
 };
 
 
-template<typename T, int N>
+template<typename T>
 struct MedianSplitter {
     MedianSplitter(int depth_limit = 16): depth_limit(depth_limit) {}
 
-    std::vector<Subrange<typename T::iterator>> operator()(
+    typename T::iterator operator()(
         const Range<typename T::iterator>& range,
         int depth
     ) const;
@@ -125,71 +111,60 @@ struct MedianSplitter {
 };
 
 
-template<typename T, int N>
-class Tree {
+template<typename T>
+class KDTree {
 public:
     typedef typename T::iterator mesh_iterator;
 
     class Node {
     public:
-        Node(const Node&)            = delete;
-        Node()                       = delete;
-        Node& operator=(const Node&) = delete;
-
-        Node(Node&&)            = default;
-        Node& operator=(Node&&) = default;
-        ~Node()                 = default;
+        Node() = default;
 
         Node(
             AABBox<typename T::float_t> box,
             Range<mesh_iterator> range,
-            std::vector<Node>&& children
-        ): bounding_box(box), range(range), children(std::move(children)) {}
+            std::unique_ptr<Node>&& left,
+            std::unique_ptr<Node>&& right
+        ): bounding_box(box), range(range), m_left(std::move(left)), m_right(std::move(right)) {}
 
         Node(
             AABBox<typename T::float_t> box,
             Range<mesh_iterator> range
-        ): bounding_box(box), range(range), children() {}
+        ): bounding_box(box), range(range), m_left(nullptr), m_right(nullptr) {}
 
         template<typename Splitter>
-        static Node build(Range<typename T::iterator> range, int depth, const Splitter& splitter);
+        static std::unique_ptr<Node> build(const Range<typename T::iterator>& range, int depth, const Splitter& splitter);
 
-        inline bool                               is_leaf()     const { return children.empty(); }
-        inline const std::vector<Node>&           child_nodes() const { return children; }
-        inline const AABBox<typename T::float_t>& box()         const { return bounding_box; }
-        inline const Range<mesh_iterator>&        triangles()   const { return range; }
+        inline bool                               is_leaf()   const { return !m_left && !m_right; }
+        inline bool                               has_left()  const { return static_cast<bool>(m_left); }
+        inline bool                               has_right() const { return static_cast<bool>(m_right); }
+        inline const Node&                        left()      const { return *m_left; }
+        inline const Node&                        right()     const { return *m_right; }
+        inline const AABBox<typename T::float_t>& box()       const { return bounding_box; }
+        inline const Range<mesh_iterator>&        triangles() const { return range; }
     private:
         AABBox<typename T::float_t> bounding_box;
         Range<mesh_iterator> range;
-        std::vector<Node> children;
+        std::unique_ptr<Node> m_left;
+        std::unique_ptr<Node> m_right;
     };
 
-    Tree(Node&& root): root(std::move(root)) {}
+    KDTree(std::unique_ptr<Node>&& root): root(std::move(root)) {}
 
-    template<typename Splitter = SAHSplitter<T, N>>
-    inline static Tree<T, N> for_mesh(
+    template<typename Splitter = SAHSplitter<T>>
+    inline static KDTree<T> for_mesh(
         mesh_iterator begin,
         mesh_iterator end,
         const Splitter& splitter = Splitter()
     ) {
-        return Tree<T, N>(Node::build(Range(begin, end), 0, splitter));
+        return KDTree<T>(std::move(Node::build(Range(begin, end), 0, splitter)));
     }
 
     inline const Node& top() const
-    { return root; }
+    { return *root; }
 private:
-    Node root;
+    std::unique_ptr<Node> root;
 };
-
-
-template<typename T>
-using KDTree = Tree<T, 1>;
-
-template<typename T>
-using Quadtree = Tree<T, 2>;
-
-template<typename T>
-using Octree = Tree<T, 3>;
 
 
 template<typename mesh_type, typename float_type, typename index_type>
@@ -242,15 +217,15 @@ public:
         float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
 
-    template<typename T, int N>
+    template<typename T>
     std::vector<Vector3<float_t>> intersects(
-        const Tree<T, N>& tree,
+        const KDTree<T>& tree,
         float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
 private:
-    template<typename T, int N>
+    template<typename T>
     void recursive_intersects(
-        const typename Tree<T, N>::Node& iter,
+        const typename KDTree<T>::Node& node,
         std::vector<Vector3<float_t>>& output,
         float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
@@ -498,8 +473,8 @@ void Mesh<mesh_t, float_t, index_t>::setup() {
 
 
 // Tree implementation
-template<typename T, int N>
-std::pair<typename T::iterator, double> SAHSplitter<T, N>::find_min_sah(
+template<typename T>
+std::pair<typename T::iterator, double> SAHSplitter<T>::find_min_sah(
     const Range<typename T::iterator>& range
 ) const {
     const auto length = range.length();
@@ -526,114 +501,78 @@ std::pair<typename T::iterator, double> SAHSplitter<T, N>::find_min_sah(
     return std::make_pair(std::next(range.begin(), mid), min_sah);
 }
 
-template<typename T, int N>
-std::vector<Subrange<typename T::iterator>> SAHSplitter<T, N>::operator()(
+template<typename T>
+typename T::iterator SAHSplitter<T>::operator()(
     const Range<typename T::iterator>& range, int
 ) const {
-    std::vector<Subrange<typename T::iterator>> subranges;
-    std::vector<std::pair<Range<typename T::iterator>, int>> unsplitted {{range, N}};
-
-    while (!unsplitted.empty()) {
-        auto [cur, splits_remained] = std::move(unsplitted.back());
-        unsplitted.pop_back();
-
-        int splitting_axis = 0;
-        double min_sah = std::numeric_limits<double>::max();
-        auto split = cur.end();
-        for (int axis = 0; axis < 3; ++axis) {
-            std::sort(cur.begin(), cur.end(), [axis](const auto& it1, const auto& it2) {
-                return it1.center[axis] < it2.center[axis];
-            });
-
-            if (const auto [mid, sah] = find_min_sah(cur); sah < min_sah) {
-                min_sah = sah;
-                splitting_axis = axis;
-                split = mid;
-            }
-        }
-
-        if (splitting_axis != 2) {
-            std::sort(cur.begin(), cur.end(), [splitting_axis](const auto& it1, const auto& it2) {
-                return it1.center[splitting_axis] < it2.center[splitting_axis];
-            });
-        }
-
-        if (split == cur.end() || cur.length() <= threshold) {
-            subranges.emplace_back(cur.begin(), cur.end(), false);
-        } else if (splits_remained == 1) {
-            subranges.emplace_back(cur.begin(), split, true);
-            subranges.emplace_back(split, cur.end(), true);
-        } else {
-            unsplitted.emplace_back(Range(cur.begin(), split), splits_remained - 1);
-            unsplitted.emplace_back(Range(split, cur.end()), splits_remained - 1);
-        }
-    }
-
-    return subranges;
-}
-
-
-template<typename T, int N>
-std::vector<Subrange<typename T::iterator>> MedianSplitter<T, N>::operator()(
-    const Range<typename T::iterator>& range,
-    int depth
-) const {
-    if (depth >= depth_limit) {
-        return {Subrange(range.begin(), range.end(), false)};
-    }
-
-    std::vector<Subrange<typename T::iterator>> subranges;
-    std::vector<std::pair<Range<typename T::iterator>, int>> unsplitted {{range, N}};
-
-    while (!unsplitted.empty()) {
-        auto [cur, splits_remained] = std::move(unsplitted.back());
-        unsplitted.pop_back();
-
-        auto length = cur.length();
-        if (length <= (1 << N)) {
-            subranges.emplace_back(cur.begin(), cur.end(), false);
-            continue;
-        }
-
-        int axis = (depth + splits_remained) % 3;
-        std::sort(cur.begin(), cur.end(), [axis](const auto& it1, const auto& it2) {
+    int splitting_axis = 0;
+    double min_sah = std::numeric_limits<double>::max();
+    auto split = range.end();
+    for (int axis = 0; axis < 3; ++axis) {
+        std::sort(range.begin(), range.end(), [axis](const auto& it1, const auto& it2) {
             return it1.center[axis] < it2.center[axis];
         });
 
-        auto mid = std::next(cur.begin(), length / 2);
-        if (splits_remained == 1) {
-            subranges.emplace_back(cur.begin(), mid, true);
-            subranges.emplace_back(mid, cur.end(), true);
-        } else {
-            unsplitted.emplace_back(Range(cur.begin(), mid), splits_remained - 1);
-            unsplitted.emplace_back(Range(mid, cur.end()), splits_remained - 1);
+        if (const auto [mid, sah] = find_min_sah(range); sah < min_sah) {
+            min_sah = sah;
+            splitting_axis = axis;
+            split = mid;
         }
     }
 
-    return subranges;
+    if (splitting_axis != 2) {
+        std::sort(range.begin(), range.end(), [splitting_axis](const auto& it1, const auto& it2) {
+            return it1.center[splitting_axis] < it2.center[splitting_axis];
+        });
+    }
+
+    if (split == range.end() || range.length() <= threshold) {
+        return range.end();
+    }
+    return split;
 }
 
 
-template<typename T, int N>
+template<typename T>
+typename T::iterator MedianSplitter<T>::operator()(
+    const Range<typename T::iterator>& range,
+    int depth
+) const {
+    auto length = range.length();
+
+    if (depth >= depth_limit || length <= 32) {
+        return range.end();
+    }
+
+    int axis = depth % 3;
+    std::sort(range.begin(), range.end(), [axis](const auto& it1, const auto& it2) {
+        return it1.center[axis] < it2.center[axis];
+    });
+
+    return std::next(range.begin(), length / 2);
+}
+
+
+template<typename T>
 template<typename Splitter>
-typename Tree<T, N>::Node Tree<T, N>::Node::build(
-    Range<typename T::iterator> range,
+std::unique_ptr<typename KDTree<T>::Node> KDTree<T>::Node::build(
+    const Range<typename T::iterator>& range,
     int depth,
     const Splitter& splitter
 ) {
-    auto subranges = splitter(range, depth);
-    std::vector<typename Tree<T, N>::Node> children;
-    AABBox<typename T::float_t> aabb;
-    for (const auto& subrange : subranges) {
-        auto child = subrange.is_splittable() ?
-            build(subrange, depth + 1, splitter) :
-            Node(get_bounding_box<T>(subrange), subrange);
-
-        aabb += child.box();
-        children.push_back(std::move(child));
+    auto split = splitter(range, depth);
+    if (split == range.end()) {
+        return std::make_unique<Node>(get_bounding_box<T>(range), range);
     }
 
-    return Node(aabb, range, std::move(children));
+    auto left = build(Range(range.begin(), split), depth + 1, splitter);
+    auto right = build(Range(split, range.end()), depth + 1, splitter);
+
+    return std::make_unique<Node>(
+        left->box() + right->box(),
+        range,
+        std::move(left), std::move(right)
+    );
 }
 
 
@@ -705,42 +644,42 @@ std::optional<Vector3<float_t>> Ray<float_t>::intersects(
 
 
 template<typename float_t>
-template<typename T, int N>
+template<typename T>
 void Ray<float_t>::recursive_intersects(
-    const typename Tree<T, N>::Node& node,
+    const typename KDTree<T>::Node& node,
     std::vector<Vector3<float_t>>& output,
     float_t epsilon
 ) const {
     if (node.is_leaf()) {
-        for (const auto& cur : node.triangles()) {
-            auto intersection = intersects<T>(cur, epsilon);
-            if (intersection) {
+        for (const auto& triangle : node.triangles()) {
+            if (auto intersection = intersects<T>(triangle, epsilon); intersection) {
                 output.push_back(std::move(*intersection));
             }
         }
     } else {
-        for (const auto& child : node.child_nodes()) {
-            if (intersects(child.box())) {
-                recursive_intersects<T, N>(child, output, epsilon);
-            }
+        if (node.has_left() && intersects(node.left().box())) {
+            recursive_intersects<T>(node.left(), output, epsilon);
+        }
+        if (node.has_right() && intersects(node.right().box())) {
+            recursive_intersects<T>(node.right(), output, epsilon);
         }
     }
 }
 
 
 template<typename float_t>
-template<typename T, int N>
+template<typename T>
 std::vector<Vector3<float_t>> Ray<float_t>::intersects(
-    const Tree<T, N>& tree,
+    const KDTree<T>& tree,
     float_t epsilon
 ) const {
-    const typename Tree<T, N>::Node& node = tree.top();
+    const auto& node = tree.top();
     if (!intersects(node.box())) {
         return {};
     }
 
     std::vector<Vector3<float_t>> output;
-    recursive_intersects<T, N>(node, output, epsilon);
+    recursive_intersects<T>(node, output, epsilon);
     return output;
 }
 
@@ -757,9 +696,7 @@ std::vector<Vector3<float_t>> Ray<float_t>::intersects(
     std::vector<Vector3<float_t>> intersections;
 
     for (const auto& cur : mesh) {
-        auto intersection = intersects<mesh_t>(cur, epsilon);
-
-        if (intersection) {
+        if (auto intersection = intersects<mesh_t>(cur, epsilon); intersection) {
             intersections.push_back(std::move(*intersection));
         }
     }
