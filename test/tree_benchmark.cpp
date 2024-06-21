@@ -16,7 +16,7 @@ std::string concat(const Args&... args) {
 }
 
 
-using Splitter = rmi::MedianSplitter<TriangularMesh>;
+using Splitter = rmi::SAHSplitter<TriangularMesh>;
 constexpr const char* MESH_FILEPATH = "../../data/Fantasy_Castle.stl";
 
 

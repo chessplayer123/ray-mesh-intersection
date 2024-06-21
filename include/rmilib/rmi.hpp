@@ -1,7 +1,6 @@
 #pragma once
 
 
-#include <iostream>
 #include <optional>
 #include <limits>
 #include <vector>
@@ -18,9 +17,6 @@ namespace rmi {
 template<typename T>
 class Vector3 {
 public:
-    template<typename E>
-    friend std::ostream& operator<<(std::ostream& stream, const Vector3<E>& vec);
-
     constexpr Vector3();
     constexpr Vector3(T x, T y, T z);
 
@@ -35,7 +31,6 @@ public:
     bool    operator!=(const Vector3& rhs) const;
     T       operator[](int index) const;
 
-    bool        equals(const Vector3& rhs, double epsilon) const;
     T           length() const;
     T           dot(const Vector3& rhs) const;
     Vector3     cross(const Vector3& rhs) const;
@@ -201,22 +196,24 @@ public:
 
     Vector3<float_t> at(double t) const;
 
-    bool intersects(const AABBox<float_t>& box) const;
+    bool is_intersects(const AABBox<float_t>& box) const;
+
+    std::pair<float_t, float_t> intersects(const AABBox<float_t>& box) const;
 
     template<typename mesh_t>
-    std::optional<Vector3<float_t>> intersects(
+    std::optional<float_t> intersects(
         const typename mesh_t::Element& triangle,
         float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
 
     template<typename mesh_t, typename index_t>
-    std::vector<Vector3<float_t>> intersects(
+    std::vector<float_t> intersects(
         Mesh<mesh_t, float_t, index_t>& mesh,
         float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
 
     template<typename T>
-    std::vector<Vector3<float_t>> intersects(
+    std::vector<float_t> intersects(
         const KDTree<T>& tree,
         float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
@@ -224,7 +221,7 @@ private:
     template<typename T>
     void recursive_intersects(
         const typename KDTree<T>::Node& node,
-        std::vector<Vector3<float_t>>& output,
+        std::vector<float_t>& output,
         float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
 
@@ -245,11 +242,6 @@ inline constexpr Vector3<T>::Vector3(): coords({0, 0, 0}) {
 
 template<typename T>
 inline constexpr Vector3<T>::Vector3(T x, T y, T z): coords({x, y, z}) {
-}
-
-template<typename T>
-inline std::ostream& operator<<(std::ostream& stream, const Vector3<T>& vec) {
-    return stream << "Vector(" << vec.x() << ", " << vec.y() << ", " << vec.z() << ")";
 }
 
 template<typename T>
@@ -303,13 +295,6 @@ inline bool Vector3<T>::operator==(const Vector3<T>& rhs) const {
 template<typename T>
 inline bool Vector3<T>::operator!=(const Vector3<T>& rhs) const {
     return x() != rhs.x() || y() != rhs.y() || z() != rhs.z();
-}
-
-template<typename T>
-inline bool Vector3<T>::equals(const Vector3<T>& rhs, double epsilon) const {
-    return abs(x() - rhs.x()) < epsilon
-        && abs(y() - rhs.y()) < epsilon
-        && abs(z() - rhs.z()) < epsilon;
 }
 
 template<typename T>
@@ -602,7 +587,7 @@ Ray<float_t>::Ray(Vector3<float_t> origin, Vector3<float_t> direction):
  */
 template<typename float_t>
 template<typename mesh_t>
-std::optional<Vector3<float_t>> Ray<float_t>::intersects(
+std::optional<float_t> Ray<float_t>::intersects(
     const typename mesh_t::Element& triangle,
     float_t epsilon
 ) const {
@@ -637,7 +622,7 @@ std::optional<Vector3<float_t>> Ray<float_t>::intersects(
         return std::nullopt;
     }
 
-    return at(t);
+    return t;
 }
 
 
@@ -645,20 +630,20 @@ template<typename float_t>
 template<typename T>
 void Ray<float_t>::recursive_intersects(
     const typename KDTree<T>::Node& node,
-    std::vector<Vector3<float_t>>& output,
+    std::vector<float_t>& output,
     float_t epsilon
 ) const {
     if (node.is_leaf()) {
         for (const auto& triangle : node.triangles()) {
             if (auto intersection = intersects<T>(triangle, epsilon); intersection) {
-                output.push_back(std::move(*intersection));
+                output.push_back(*intersection);
             }
         }
     } else {
-        if (node.has_left() && intersects(node.left().box())) {
+        if (node.has_left() && is_intersects(node.left().box())) {
             recursive_intersects<T>(node.left(), output, epsilon);
         }
-        if (node.has_right() && intersects(node.right().box())) {
+        if (node.has_right() && is_intersects(node.right().box())) {
             recursive_intersects<T>(node.right(), output, epsilon);
         }
     }
@@ -667,16 +652,16 @@ void Ray<float_t>::recursive_intersects(
 
 template<typename float_t>
 template<typename T>
-std::vector<Vector3<float_t>> Ray<float_t>::intersects(
+std::vector<float_t> Ray<float_t>::intersects(
     const KDTree<T>& tree,
     float_t epsilon
 ) const {
     const auto& node = tree.top();
-    if (!intersects(node.box())) {
+    if (!is_intersects(node.box())) {
         return {};
     }
 
-    std::vector<Vector3<float_t>> output;
+    std::vector<float_t> output;
     recursive_intersects<T>(node, output, epsilon);
     return output;
 }
@@ -687,15 +672,15 @@ std::vector<Vector3<float_t>> Ray<float_t>::intersects(
  */
 template<typename float_t>
 template<typename mesh_t, typename index_t>
-std::vector<Vector3<float_t>> Ray<float_t>::intersects(
+std::vector<float_t> Ray<float_t>::intersects(
     Mesh<mesh_t, float_t, index_t>& mesh,
     float_t epsilon
 ) const {
-    std::vector<Vector3<float_t>> intersections;
+    std::vector<float_t> intersections;
 
     for (const auto& cur : mesh) {
         if (auto intersection = intersects<mesh_t>(cur, epsilon); intersection) {
-            intersections.push_back(std::move(*intersection));
+            intersections.push_back(*intersection);
         }
     }
 
@@ -703,21 +688,30 @@ std::vector<Vector3<float_t>> Ray<float_t>::intersects(
 }
 
 template<typename float_t>
-inline bool Ray<float_t>::intersects(const AABBox<float_t>& box) const {
+inline std::pair<float_t, float_t> Ray<float_t>::intersects(const AABBox<float_t>& box) const {
     Vector3 t1 = (box.min - origin) * inv_vector;
     Vector3 t2 = (box.max - origin) * inv_vector;
 
-    float_t tmin = std::min(t1.x(), t2.x());
-    float_t tmax = std::max(t1.x(), t2.x());
-
-    tmin = std::max(tmin, std::min(t1.y(), t2.y()));
-    tmax = std::min(tmax, std::max(t1.y(), t2.y()));
-
-    tmin = std::max(tmin, std::min(t1.z(), t2.z()));
-    tmax = std::min(tmax, std::max(t1.z(), t2.z()));
-
-    return tmax >= 0 && tmin <= tmax;
+    return std::make_pair(
+        std::max({
+            std::min(t1.x(), t2.x()),
+            std::min(t1.y(), t2.y()),
+            std::min(t1.z(), t2.z())
+        }),
+        std::min({
+            std::max(t1.x(), t2.x()),
+            std::max(t1.y(), t2.y()),
+            std::max(t1.z(), t2.z())
+        })
+    );
 }
+
+template<typename float_t>
+inline bool Ray<float_t>::is_intersects(const AABBox<float_t>& box) const {
+    auto [tmin, tmax] = intersects(box);
+    return tmax >= 0.0 && tmin <= tmax;
+}
+
 
 } // namespace rmi
 

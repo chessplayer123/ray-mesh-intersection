@@ -8,7 +8,7 @@
 namespace rmi::parallel {
 
 template<typename T>
-std::vector<Vector3<typename T::float_t>> pool_intersects(
+std::vector<typename T::float_t> pool_intersects(
     const Ray<typename T::float_t>& ray,
     const KDTree<T>& tree,
     int threads_count
@@ -25,7 +25,7 @@ std::vector<Vector3<typename T::float_t>> pool_intersects(
 namespace rmi::parallel {
 
 template<typename T>
-std::vector<Vector3<typename T::float_t>> omp_intersects(
+std::vector<typename T::float_t> omp_intersects(
     const Ray<typename T::float_t>& ray,
     const KDTree<T>& tree,
     int threads_count,
@@ -34,7 +34,7 @@ std::vector<Vector3<typename T::float_t>> omp_intersects(
 
 
 template<typename mesh_t, typename float_t, typename index_t>
-std::vector<Vector3<float_t>> omp_intersects(
+std::vector<float_t> omp_intersects(
     const Ray<float_t>& ray,
     Mesh<mesh_t, float_t, index_t>& mesh,
     int threads_count,
@@ -80,8 +80,8 @@ public:
         }
     }
 
-    std::vector<Vector3<float_t>> wait_result() {
-        std::vector<Vector3<float_t>> result;
+    std::vector<float_t> wait_result() {
+        std::vector<float_t> result;
         for (int id = 0; id < threads_count; ++id) {
             threads[id].join();
             std::copy(results[id].begin(), results[id].end(), std::back_inserter(result));
@@ -121,23 +121,22 @@ private:
             if (cur->is_leaf()) {
                 for (const auto& triangle : cur->triangles()) {
                     if (auto intersection = ray.template intersects<T>(triangle); intersection) {
-                        results[thread_id].push_back(std::move(*intersection));
+                        results[thread_id].push_back(*intersection);
                     }
                 }
                 next = pop_node(thread_id);
             } else {
-                next = std::nullopt;
-                if (cur->has_left() && ray.intersects(cur->left().box())) {
+                bool intersects_left  = (cur->has_left() && ray.is_intersects(cur->left().box()));
+                bool intersects_right = (cur->has_right() && ray.is_intersects(cur->right().box()));
+
+                switch ((intersects_left << 1) | intersects_right) {
+                case 0b00: next = pop_node(thread_id); break;
+                case 0b01: next = &cur->right(); break;
+                case 0b10: next = &cur->left(); break;
+                case 0b11:
                     next = &cur->left();
-                }
-
-                if (cur->has_right() && ray.intersects(cur->right().box())) {
-                    if (next) queues[thread_id].push(&cur->right());
-                    else next = &cur->right();
-                }
-
-                if (!next) {
-                    next = pop_node(thread_id);
+                    queues[thread_id].push(&cur->right());
+                    break;
                 }
             }
         }
@@ -145,7 +144,7 @@ private:
 
     std::vector<std::thread> threads;
     std::vector<WorkStealingQueue<const Node*>> queues;
-    std::vector<std::vector<Vector3<float_t>>> results;
+    std::vector<std::vector<float_t>> results;
 
     std::atomic_int counter;
     int threads_count;
@@ -154,13 +153,13 @@ private:
 };
 
 template<typename T>
-std::vector<Vector3<typename T::float_t>> pool_intersects(
+std::vector<typename T::float_t> pool_intersects(
     const Ray<typename T::float_t>& ray,
     const KDTree<T>& tree,
     int threads_count
 ) {
     const auto& root = tree.top();
-    if (!ray.intersects(root.box())) {
+    if (!ray.is_intersects(root.box())) {
         return {};
     }
 
@@ -183,23 +182,23 @@ template<typename T>
 void omp_recursive_intersects(
     const Ray<typename T::float_t>& ray,
     const typename KDTree<T>::Node* node,
-    std::vector<Vector3<typename T::float_t>>& output,
+    std::vector<typename T::float_t>& output,
     double epsilon
 ) {
     if (node->is_leaf()) {
         for (const auto& cur : node->triangles()) {
             if (auto intersection = ray.template intersects<T>(cur, epsilon); intersection) {
                 #pragma omp critical
-                output.push_back(std::move(*intersection));
+                output.push_back(*intersection);
             }
         }
     } else {
-        if (node->has_left() && ray.intersects(node->left().box())) {
+        if (node->has_left() && ray.is_intersects(node->left().box())) {
             #pragma omp task shared(output)
             omp_recursive_intersects<T>(ray, &node->left(), output, epsilon);
         }
 
-        if (node->has_right() && ray.intersects(node->right().box())) {
+        if (node->has_right() && ray.is_intersects(node->right().box())) {
             #pragma omp task shared(output)
             omp_recursive_intersects<T>(ray, &node->right(), output, epsilon);
         }
@@ -208,18 +207,18 @@ void omp_recursive_intersects(
 
 
 template<typename T>
-std::vector<Vector3<typename T::float_t>> omp_intersects(
+std::vector<typename T::float_t> omp_intersects(
     const Ray<typename T::float_t>& ray,
     const KDTree<T>& tree,
     int threads_count,
     typename T::float_t epsilon
 ) {
     const auto& root = tree.top();
-    if (!ray.intersects(root.box())) {
+    if (!ray.is_intersects(root.box())) {
         return {};
     }
 
-    std::vector<Vector3<typename T::float_t>> output;
+    std::vector<typename T::float_t> output;
 
     #pragma omp parallel shared(output) num_threads(threads_count)
     #pragma omp single
@@ -274,13 +273,13 @@ KDTree<T> omp_build(
 
 
 template<typename mesh_t, typename float_t, typename index_t>
-std::vector<Vector3<float_t>> omp_intersects(
+std::vector<float_t> omp_intersects(
     const Ray<float_t>& ray,
     Mesh<mesh_t, float_t, index_t>& mesh,
     int threads_count,
     float_t epsilon
 ) {
-    std::vector<Vector3<float_t>> intersections;
+    std::vector<float_t> intersections;
 
     #pragma omp parallel for shared(mesh, ray, intersections) num_threads(threads_count)
     for (const auto& triangle : mesh) {

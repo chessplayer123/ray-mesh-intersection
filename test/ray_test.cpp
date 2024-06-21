@@ -1,6 +1,7 @@
 #include <catch2/catch.hpp>
 
 #include <sstream>
+#include <iostream>
 #include <array>
 #include "rmilib/rmi.hpp"
 #include "rmilib/rmi_parallel.hpp"
@@ -31,7 +32,7 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
         MeshMock mesh(rmi::Vector3d(1, 0, 0), rmi::Vector3d(0, 1, 0), rmi::Vector3d(1, 1, 0));
         auto triangle = *mesh.begin();
         WHEN("Finding intersection") {
-            std::optional<rmi::Vector3d> intersection = ray.intersects<MeshMock>(triangle);
+            std::optional<double> intersection = ray.intersects<MeshMock>(triangle);
             THEN("Should return std::nullopt") {
                 REQUIRE(intersection.has_value() == false);
             }
@@ -44,7 +45,7 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
 
         auto triangle = *mesh.begin();
         WHEN("Finding intersection") {
-            std::optional<rmi::Vector3d> actualIntersection = ray.intersects<MeshMock>(triangle);
+            std::optional<double> actualIntersection = ray.intersects<MeshMock>(triangle);
             THEN("Should return std::nullopt") {
                 REQUIRE(actualIntersection.has_value() == false);
             }
@@ -56,9 +57,9 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
         MeshMock mesh(rmi::Vector3d(0, 1, 0), rmi::Vector3d(0, 0, 1), rmi::Vector3d(0, 1, 1));
         auto triangle = *mesh.begin();
         WHEN("Finding intersection") {
-            std::optional<rmi::Vector3d> actualIntersection = ray.intersects<MeshMock>(triangle);
+            auto actualIntersection = ray.intersects<MeshMock>(triangle);
             THEN("Should return expected intersection point") {
-                rmi::Vector3d expectedIntersection(0, 1, 1);
+                double expectedIntersection = 10.0;
                 REQUIRE(actualIntersection.has_value());
                 REQUIRE(actualIntersection.value() == expectedIntersection);
             }
@@ -70,11 +71,14 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
         MeshMock mesh(rmi::Vector3d(-1, 0.5, 2.3), rmi::Vector3d(0, -0.15, 0), rmi::Vector3d(1.3, 1, 1));
         auto triangle = *mesh.begin();
         WHEN("Finding intersection") {
-            std::optional<rmi::Vector3d> actualIntersection = ray.intersects<MeshMock>(triangle);
+            std::optional<double> actualIntersection = ray.intersects<MeshMock>(triangle);
+            double expectedIntersection = 0.800675;
             THEN("Should return expected intersection point") {
-                rmi::Vector3d expectedIntersection(0.253933, 0.233708, 0.513483);
                 REQUIRE(actualIntersection.has_value());
-                REQUIRE(actualIntersection.value().equals(expectedIntersection, EPSILON));
+                CHECK_THAT(
+                    actualIntersection.value(),
+                    Catch::Matchers::WithinAbs(expectedIntersection, EPSILON)
+                );
             }
         }
     }
@@ -84,7 +88,7 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
         MeshMock mesh(rmi::Vector3d(-1, 0.5, 2.3), rmi::Vector3d(0, -0.15, 0), rmi::Vector3d(1.3, 1, 1));
         auto triangle = *mesh.begin();
         WHEN("Finding intersection") {
-            std::optional<rmi::Vector3d> actualIntersection = ray.intersects<MeshMock>(triangle);
+            std::optional<double> actualIntersection = ray.intersects<MeshMock>(triangle);
             THEN("Should return std::nullopt") {
                 REQUIRE(actualIntersection.has_value() == false);
             }
@@ -97,7 +101,7 @@ TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
         rmi::Ray<double> ray(rmi::Vector3d(2, 2, 2), rmi::Vector3d(-1, -1, -1));
         rmi::AABBox<double> aabb = {rmi::Vector3d(-1, -1, -1), rmi::Vector3d(1, 1, 1)};
         WHEN("Checking whether they intersects") {
-            bool is_intersects = ray.intersects(aabb);
+            bool is_intersects = ray.is_intersects(aabb);
             THEN("Should return true") {
                 REQUIRE(is_intersects == true);
             }
@@ -108,7 +112,7 @@ TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
         rmi::Ray<double> ray(rmi::Vector3d(10, 2, 2), rmi::Vector3d(1, 1, 1));
         rmi::AABBox<double> aabb = {rmi::Vector3d(-1, -1, -1), rmi::Vector3d(1, 1, 1)};
         WHEN("Checking whether they intersects") {
-            bool is_intersects = ray.intersects(aabb);
+            bool is_intersects = ray.is_intersects(aabb);
             THEN("Should return false") {
                 REQUIRE(is_intersects == false);
             }
@@ -119,7 +123,7 @@ TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
         rmi::Ray<double> ray(rmi::Vector3d(2, 2, 2), rmi::Vector3d(-1, -1, 0));
         rmi::AABBox<double> aabb = {rmi::Vector3d(-1, -1, -1), rmi::Vector3d(1, 1, 1)};
         WHEN("Checking whether they intersects") {
-            bool is_intersects = ray.intersects(aabb);
+            bool is_intersects = ray.is_intersects(aabb);
             THEN("Should return false") {
                 REQUIRE(is_intersects == false);
             }
@@ -130,7 +134,7 @@ TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
         rmi::Ray<double> ray(rmi::Vector3d(0, 0, 0), rmi::Vector3d(1, 0, 0));
         rmi::AABBox<double> aabb = {rmi::Vector3d(-1, -1, -1), rmi::Vector3d(1, 1, 1)};
         WHEN("Checking whether they intersects") {
-            bool is_intersects = ray.intersects(aabb);
+            bool is_intersects = ray.is_intersects(aabb);
             THEN("Should return true") {
                 REQUIRE(is_intersects == true);
             }
@@ -142,7 +146,7 @@ TEST_CASE("Ray and triangular mesh intersection methods", "[ray][mesh][kdtree]")
     GIVEN("Triangular mesh and ray") {
         std::vector<double> coords;
         std::vector<size_t> indices;
-        std::vector<rmi::Vector3d> expected_intersections;
+        std::vector<double> expected_intersections;
         for (double x = 1; x <= 1000; ++x) {
             coords.push_back(x); coords.push_back(0); coords.push_back(0);
             coords.push_back(x); coords.push_back(1); coords.push_back(0);
@@ -152,7 +156,7 @@ TEST_CASE("Ray and triangular mesh intersection methods", "[ray][mesh][kdtree]")
             indices.push_back((x-1)*3 + 1);
             indices.push_back((x-1)*3 + 2);
 
-            expected_intersections.emplace_back(x, 0, 0);
+            expected_intersections.push_back(x);
         }
         rmi::Ray<double> ray(rmi::Vector3d(0, 0, 0), rmi::Vector3d(1, 0, 0));
         TriangularMesh mesh(std::move(coords), std::move(indices));
