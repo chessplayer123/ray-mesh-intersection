@@ -85,7 +85,7 @@ struct SAHSplitter {
         int depth
     ) const;
 
-    std::pair<typename T::iterator, double> find_min_sah(
+    std::pair<typename T::iterator, typename T::float_t> find_min_sah(
         const Range<typename T::iterator>& range
     ) const;
 
@@ -194,7 +194,7 @@ class Ray {
 public:
     Ray(Vector3<float_t> origin, Vector3<float_t> direction);
 
-    Vector3<float_t> at(double t) const;
+    Vector3<float_t> at(float_t t) const;
 
     bool is_intersects(const AABBox<float_t>& box) const;
 
@@ -457,7 +457,7 @@ void Mesh<mesh_t, float_t, index_t>::setup() {
 
 // Tree implementation
 template<typename T>
-std::pair<typename T::iterator, double> SAHSplitter<T>::find_min_sah(
+std::pair<typename T::iterator, typename T::float_t> SAHSplitter<T>::find_min_sah(
     const Range<typename T::iterator>& range
 ) const {
     const auto length = range.length();
@@ -489,7 +489,7 @@ typename T::iterator SAHSplitter<T>::operator()(
     const Range<typename T::iterator>& range, int
 ) const {
     int splitting_axis = 0;
-    double min_sah = std::numeric_limits<double>::max();
+    auto min_sah = std::numeric_limits<typename T::float_t>::max();
     auto split = range.end();
     for (int axis = 0; axis < 3; ++axis) {
         std::sort(range.begin(), range.end(), [axis](const auto& it1, const auto& it2) {
@@ -561,7 +561,7 @@ std::unique_ptr<typename KDTree<T>::Node> KDTree<T>::Node::build(
 
 // Ray implementation
 template<typename float_t>
-inline Vector3<float_t> Ray<float_t>::at(double t) const {
+inline Vector3<float_t> Ray<float_t>::at(float_t t) const {
     return Vector3<float_t>(
         origin.x() + vector.x() * t,
         origin.y() + vector.y() * t,
