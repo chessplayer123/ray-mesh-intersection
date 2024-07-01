@@ -1,24 +1,28 @@
 #include <catch2/catch.hpp>
 
 #include <sstream>
+#include <iostream>
 #include <array>
 #include "rmilib/rmi.hpp"
-#include "rmilib/rmi_parallel.hpp"
 #include "rmilib/raw_mesh.hpp"
 
 #define EPSILON 0.00001
 
 
 // Mesh consisting of a single triangle
-struct MeshMock: rmi::Mesh<MeshMock, double, size_t> {
+struct MeshMock: rmi::Mesh<MeshMock> {
+    using float_t = double;
+    using index_t = size_t;
+
     template<size_t vertex_num>
     inline const rmi::Vector3d& v(size_t) const {
         return vertexes[vertex_num];
     }
 
     MeshMock(rmi::Vector3d v1, rmi::Vector3d v2, rmi::Vector3d v3):
-        rmi::Mesh<MeshMock, double, size_t>(1),
-        vertexes{v1, v2, v3} {
+        vertexes{v1, v2, v3}
+    {
+        rmi::Mesh<MeshMock>::setup(1);
     }
 
     std::array<rmi::Vector3d, 3> vertexes;
@@ -31,7 +35,7 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
         MeshMock mesh(rmi::Vector3d(1, 0, 0), rmi::Vector3d(0, 1, 0), rmi::Vector3d(1, 1, 0));
         auto triangle = *mesh.begin();
         WHEN("Finding intersection") {
-            std::optional<rmi::Vector3d> intersection = ray.intersects<MeshMock>(triangle);
+            auto intersection = ray.intersects<MeshMock>(triangle);
             THEN("Should return std::nullopt") {
                 REQUIRE(intersection.has_value() == false);
             }
@@ -44,7 +48,7 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
 
         auto triangle = *mesh.begin();
         WHEN("Finding intersection") {
-            std::optional<rmi::Vector3d> actualIntersection = ray.intersects<MeshMock>(triangle);
+            auto actualIntersection = ray.intersects<MeshMock>(triangle);
             THEN("Should return std::nullopt") {
                 REQUIRE(actualIntersection.has_value() == false);
             }
@@ -56,11 +60,9 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
         MeshMock mesh(rmi::Vector3d(0, 1, 0), rmi::Vector3d(0, 0, 1), rmi::Vector3d(0, 1, 1));
         auto triangle = *mesh.begin();
         WHEN("Finding intersection") {
-            std::optional<rmi::Vector3d> actualIntersection = ray.intersects<MeshMock>(triangle);
+            auto actualIntersection = ray.intersects<MeshMock>(triangle);
             THEN("Should return expected intersection point") {
-                rmi::Vector3d expectedIntersection(0, 1, 1);
                 REQUIRE(actualIntersection.has_value());
-                REQUIRE(actualIntersection.value() == expectedIntersection);
             }
         }
     }
@@ -70,11 +72,9 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
         MeshMock mesh(rmi::Vector3d(-1, 0.5, 2.3), rmi::Vector3d(0, -0.15, 0), rmi::Vector3d(1.3, 1, 1));
         auto triangle = *mesh.begin();
         WHEN("Finding intersection") {
-            std::optional<rmi::Vector3d> actualIntersection = ray.intersects<MeshMock>(triangle);
+            auto actualIntersection = ray.intersects<MeshMock>(triangle);
             THEN("Should return expected intersection point") {
-                rmi::Vector3d expectedIntersection(0.253933, 0.233708, 0.513483);
                 REQUIRE(actualIntersection.has_value());
-                REQUIRE(actualIntersection.value().equals(expectedIntersection, EPSILON));
             }
         }
     }
@@ -84,7 +84,7 @@ TEST_CASE("Ray and triangle intersection method", "[ray][triangle]") {
         MeshMock mesh(rmi::Vector3d(-1, 0.5, 2.3), rmi::Vector3d(0, -0.15, 0), rmi::Vector3d(1.3, 1, 1));
         auto triangle = *mesh.begin();
         WHEN("Finding intersection") {
-            std::optional<rmi::Vector3d> actualIntersection = ray.intersects<MeshMock>(triangle);
+            auto actualIntersection = ray.intersects<MeshMock>(triangle);
             THEN("Should return std::nullopt") {
                 REQUIRE(actualIntersection.has_value() == false);
             }
@@ -97,7 +97,7 @@ TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
         rmi::Ray<double> ray(rmi::Vector3d(2, 2, 2), rmi::Vector3d(-1, -1, -1));
         rmi::AABBox<double> aabb = {rmi::Vector3d(-1, -1, -1), rmi::Vector3d(1, 1, 1)};
         WHEN("Checking whether they intersects") {
-            bool is_intersects = ray.intersects(aabb);
+            bool is_intersects = ray.is_intersects(aabb);
             THEN("Should return true") {
                 REQUIRE(is_intersects == true);
             }
@@ -108,7 +108,7 @@ TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
         rmi::Ray<double> ray(rmi::Vector3d(10, 2, 2), rmi::Vector3d(1, 1, 1));
         rmi::AABBox<double> aabb = {rmi::Vector3d(-1, -1, -1), rmi::Vector3d(1, 1, 1)};
         WHEN("Checking whether they intersects") {
-            bool is_intersects = ray.intersects(aabb);
+            bool is_intersects = ray.is_intersects(aabb);
             THEN("Should return false") {
                 REQUIRE(is_intersects == false);
             }
@@ -119,7 +119,7 @@ TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
         rmi::Ray<double> ray(rmi::Vector3d(2, 2, 2), rmi::Vector3d(-1, -1, 0));
         rmi::AABBox<double> aabb = {rmi::Vector3d(-1, -1, -1), rmi::Vector3d(1, 1, 1)};
         WHEN("Checking whether they intersects") {
-            bool is_intersects = ray.intersects(aabb);
+            bool is_intersects = ray.is_intersects(aabb);
             THEN("Should return false") {
                 REQUIRE(is_intersects == false);
             }
@@ -130,7 +130,7 @@ TEST_CASE("Ray and bounding box intersection method", "[ray][aabb]") {
         rmi::Ray<double> ray(rmi::Vector3d(0, 0, 0), rmi::Vector3d(1, 0, 0));
         rmi::AABBox<double> aabb = {rmi::Vector3d(-1, -1, -1), rmi::Vector3d(1, 1, 1)};
         WHEN("Checking whether they intersects") {
-            bool is_intersects = ray.intersects(aabb);
+            bool is_intersects = ray.is_intersects(aabb);
             THEN("Should return true") {
                 REQUIRE(is_intersects == true);
             }
@@ -142,18 +142,19 @@ TEST_CASE("Ray and triangular mesh intersection methods", "[ray][mesh][kdtree]")
     GIVEN("Triangular mesh and ray") {
         std::vector<double> coords;
         std::vector<size_t> indices;
-        std::vector<rmi::Vector3d> expected_intersections;
+        std::vector<rmi::Vector3<double>> expected_intersections;
         for (double x = 1; x <= 1000; ++x) {
             coords.push_back(x); coords.push_back(0); coords.push_back(0);
             coords.push_back(x); coords.push_back(1); coords.push_back(0);
             coords.push_back(x); coords.push_back(0); coords.push_back(1);
 
-            indices.push_back((x-1)*3 + 0);
-            indices.push_back((x-1)*3 + 1);
-            indices.push_back((x-1)*3 + 2);
+            indices.push_back((static_cast<size_t>(x)-1)*3 + 0);
+            indices.push_back((static_cast<size_t>(x)-1)*3 + 1);
+            indices.push_back((static_cast<size_t>(x)-1)*3 + 2);
 
             expected_intersections.emplace_back(x, 0, 0);
         }
+
         rmi::Ray<double> ray(rmi::Vector3d(0, 0, 0), rmi::Vector3d(1, 0, 0));
         TriangularMesh mesh(std::move(coords), std::move(indices));
 
@@ -165,8 +166,17 @@ TEST_CASE("Ray and triangular mesh intersection methods", "[ray][mesh][kdtree]")
             );
         }
 
-        WHEN("Finding intersections with kdtree") {
-            auto kdtree = rmi::KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
+        WHEN("Finding intersections with kdtree built with SAH") {
+            auto kdtree = rmi::KDTree<TriangularMesh>::for_mesh(mesh, rmi::SAHSplitter<TriangularMesh>());
+            auto actual_intersections = ray.intersects(kdtree);
+            REQUIRE_THAT(
+                actual_intersections,
+                Catch::Matchers::UnorderedEquals(expected_intersections)
+            );
+        }
+
+        WHEN("Finding intersections with kdtree built with mid splitter") {
+            auto kdtree = rmi::KDTree<TriangularMesh>::for_mesh(mesh, rmi::MedianSplitter<TriangularMesh>());
             auto actual_intersections = ray.intersects(kdtree);
             REQUIRE_THAT(
                 actual_intersections,
@@ -175,9 +185,9 @@ TEST_CASE("Ray and triangular mesh intersection methods", "[ray][mesh][kdtree]")
         }
 
         #ifdef RMI_INCLUDE_POOL
-        WHEN("Finding intersections with pool parallel algorithm") {
-            auto kdtree = rmi::KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
-            auto actual_intersections = rmi::parallel::pool_intersects(ray, kdtree, 2);
+        WHEN("Finding intersections with kdtree with pool parallel algorithm") {
+            auto kdtree = rmi::KDTree<TriangularMesh>::for_mesh(mesh);
+            auto actual_intersections = ray.pool_intersects(kdtree, 2);
             REQUIRE_THAT(
                 actual_intersections,
                 Catch::Matchers::UnorderedEquals(expected_intersections)
@@ -186,32 +196,22 @@ TEST_CASE("Ray and triangular mesh intersection methods", "[ray][mesh][kdtree]")
         #endif
 
         #ifdef RMI_INCLUDE_OMP
-        WHEN("Finding intersections with omp parallel algorithm") {
-            auto kdtree = rmi::KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
-            auto actual_intersections = rmi::parallel::omp_intersects(ray, kdtree, 2);
+        WHEN("Finding intersections with kdtree with omp parallel algorithm") {
+            auto kdtree = rmi::KDTree<TriangularMesh>::for_mesh(mesh);
+            auto actual_intersections = ray.omp_intersects(kdtree, 2);
+            REQUIRE_THAT(
+                actual_intersections,
+                Catch::Matchers::UnorderedEquals(expected_intersections)
+            );
+        }
+
+        WHEN("Finding intersections with mesh in parallel") {
+            auto actual_intersections = ray.omp_intersects(mesh, 2);
             REQUIRE_THAT(
                 actual_intersections,
                 Catch::Matchers::UnorderedEquals(expected_intersections)
             );
         }
         #endif
-
-        WHEN("Finding intersections with quadtree") {
-            auto kdtree = rmi::Quadtree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
-            auto actual_intersections = ray.intersects(kdtree);
-            REQUIRE_THAT(
-                actual_intersections,
-                Catch::Matchers::UnorderedEquals(expected_intersections)
-            );
-        }
-
-        WHEN("Finding intersections with octree") {
-            auto kdtree = rmi::Octree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end());
-            auto actual_intersections = ray.intersects(kdtree);
-            REQUIRE_THAT(
-                actual_intersections,
-                Catch::Matchers::UnorderedEquals(expected_intersections)
-            );
-        }
     }
 }

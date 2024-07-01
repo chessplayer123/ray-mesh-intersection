@@ -8,18 +8,21 @@
 ```cpp
 #include "rmi.hpp"
 
-class MyWrapperClassName: public rmi::Mesh<MyWrapperClassName, my_float_t, my_index_t> {
+class MyWrapperClassName: public rmi::Mesh<MyWrapperClassName> {
 public:
-    MyWrapperClassName(...):
-        rmi::Mesh<MyWrapperClassName, my_float_t, my_index_t>(size_of_mesh), ...
+    using float_t = my_float_t;
+    using index_t = my_index_t;
+
+    MyWrapperClassName(...)
     {
-       ...
+        ...
+        rmi::Mesh<MyWrapperClassName>::setup(size);
     }
 
-    template<my_index_t vertex_num>
-    inline rmi::Vector3<my_float_t> v(my_index_t triangle_index) const {
+    template<index_t vertex_num>
+    inline rmi::Vector3<float_t> v(index_t triangle_index) const {
         ...
-        return rmi::Vector3<my_float_t>(x, y, z);
+        return rmi::Vector3<float_t>(x, y, z);
     }
 };
 ```
@@ -27,41 +30,47 @@ public:
 ### Build tree and find intersections
 ```cpp
 const MyWrapperClassName mesh(...);
-const int depth = 16;
-const auto tree = rmi::KDTree<MyWrapperClassName>::for_mesh(mesh.begin(), mesh.end(), depth);
-// const auto tree = rmi::Quadtree<MyWrapperClassName>::for_mesh(mesh.begin(), mesh.end(), depth);
-// const auto tree = rmi::Octree<MyWrapperClassName>::for_mesh(mesh.begin(), mesh.end(), depth);
+
+auto splitter = rmi::MedianSplitter<MyWrapperClassName>();  // rmi::SAHSplitter<MyWrapperClassName>()
+
+const auto tree = rmi::KDTree<MyWrapperClassName>::for_mesh(mesh, splitter);  // SAH by default
+
 const rmi::Ray<my_float_t> ray(
     rmi::Vector3<my_float_t>(...), // origin
     rmi::Vector3<my_float_t>(...)  // direction
 );
+
 std::vector<rmi::Vector3<my_float_t>> points = ray.intersects(tree);
+
+std::vector<rmi::Vector3<my_float_t>> points = ray.intersects(mesh);
 ```
 
-### Or use parallel algorithms [rmi_parallel.hpp](include/rmilib/rmi_parallel.hpp) (pool requires [external/wsq.hpp](external/wsq.hpp))
+### Or use parallel algorithms (pool requires [external/wsq.hpp](external/wsq.hpp))
 ```cpp
 #define RMI_INCLUDE_OMP
 #define RMI_INCLUDE_POOL
-#include "rmi_parallel.hpp"
+#include "rmi.hpp"
 
 const int threads_count = 4;
-constexpr int splits_count = 1;
 
-const auto tree = rmi::parallel::omp_build<MyWrapperClassName, splits_count>(mesh.begin(), mesh.end(), threads_count, depth);
+const auto tree = rmi::KDTree<MyWrapperClassName>::omp_for_mesh(mesh, threads_count, splitter);
 
-std::vector<rmi::Vector3<my_float_t>> points = rmi::parallel::omp_intersects(ray, tree, threads_count);
-std::vector<rmi::Vector3<my_float_t>> points = rmi::parallel::pool_intersects(ray, tree, threads_count);
+std::vector<rmi::Vector3<my_float_t>> points = ray.omp_intersects(tree, threads_count);
+
+std::vector<rmi::Vector3<my_float_t>> points = ray.omp_intersects(mesh, threads_count);
+
+std::vector<rmi::Vector3<my_float_t>> points = ray.pool_intersects(tree, threads_count);
 ```
 
 ## Build
 ```
-cmake -S . -B build [-DBUILD_TESTS=on] [-DBUILD_QT_APP=on] [-DINCLUDE_OMP=ON] [-DINCLUDE_POOL=ON]
+cmake -S . -B build [-DBUILD_TESTS=ON] [-DINCLUDE_OMP=ON] [-DINCLUDE_POOL=ON]
 cd build
 make -j%
 ```
 ### WASM (emscripten < 3.1.61)
 ```
-emcmake cmake -S . -B build [-DBUILD_WASM=on]
+emcmake cmake -S . -B build -DBUILD_WASM=ON -DBUILD_OMP=ON
 cd build
 make -j%
 ```

@@ -1,5 +1,5 @@
 const [canvas, ui] = document.getElementsByClassName("canvas");
-const uiContext = ui.getContext("2d");
+const ctx = ui.getContext("2d");
 const menu = document.getElementById("menu");
 const checkbox = document.getElementById("traversal-checkbox");
 
@@ -10,13 +10,22 @@ let mesh = null;
 let tree = null;
 
 const TARGET_FRAMERATE = 120;
-const STEP_UNITS = 0.2;
 
+let stepUnits = 0.2;
 let useParallel = false;
 let lastRenderTime = 0;
-let moveLeft = 0;
-let moveUp = 0;
-let moveForward = 0;
+
+let movement = {
+    left: 0,
+    up: 0,
+    forward: 0,
+    roll: 0,
+};
+
+
+function distance2D(p1, p2) {
+    return Math.sqrt(Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2));
+}
 
 
 function isViewerActive() {
@@ -80,7 +89,7 @@ function main() {
 
     window.onresize = () => {
         resizeCanvas();
-        paint();
+        draw();
     };
 }
 
@@ -96,21 +105,14 @@ function updateTree() {
     case "median": splitter = Module.Splitter.Median; break;
     }
 
-    let data;
-    switch (document.querySelector('input[name="tree"]:checked').value) {
-    case "kdtree":   data = Module.KDTree.forMesh(mesh.data, splitter);   break;
-    case "quadtree": data = Module.Quadtree.forMesh(mesh.data, splitter); break;
-    case "octree":   data = Module.Octree.forMesh(mesh.data, splitter);   break;
-    }
-
-    tree = new Tree(data);
+    tree = new Tree(Module.KDTree.forMesh(mesh.data, splitter));
 }
 
 
 function takeScreenShot() {
     const currentDate = new Date();
     const link = document.createElement('a');
-    paint();
+    draw();
     link.download = `rmi_screenshot_${currentDate.toISOString()}.png`;
     link.href = canvas.toDataURL({
         format: "png",
@@ -140,16 +142,29 @@ document.onpointerlockchange = (event) => {
     } else {
         menu.style.visibility = "visible";
 
-        moveForward = 0;
-        moveUp = 0;
-        moveLeft = 0;
+        movement.up = 0;
+        movement.forward = 0;
+        movement.left = 0;
+        movement.roll = 0;
     }
 };
 
 
+ui.onwheel = (event) => {
+    if (!isViewerActive()) return;
+
+    if (event.deltaY < 0) {
+        stepUnits = Math.min(stepUnits + 1, 20);
+    } else {
+        stepUnits = Math.max(stepUnits - 3, 0.2);
+    }
+    console.log(stepUnits)
+}
+
+
 ui.onmousemove = (event) => {
     if (isViewerActive()) {
-        camera.rotate(event.movementX, -event.movementY);
+        camera.rotate(-event.movementX, event.movementY, 0);
     }
 };
 
@@ -160,32 +175,30 @@ onkeydown = (event) => {
     }
 
     switch (event.code) {
-        case "ArrowUp":   handler.traverse();        break;
-        case "KeyW":      moveForward =  STEP_UNITS; break;
-        case "KeyS":      moveForward = -STEP_UNITS; break;
-        case "KeyA":      moveLeft    =  STEP_UNITS; break;
-        case "KeyD":      moveLeft    = -STEP_UNITS; break;
-        case "Space":     moveUp      =  STEP_UNITS; break;
-        case "ShiftLeft": moveUp      = -STEP_UNITS; break;
-        case "Enter":     takeScreenShot();          break;
+        case "KeyQ":      movement.roll = -1.0;           break;
+        case "KeyE":      movement.roll = +1.0;           break;
+        case "KeyW":      movement.forward = +stepUnits; break;
+        case "KeyS":      movement.forward = -stepUnits; break;
+        case "KeyA":      movement.left    = +stepUnits; break;
+        case "KeyD":      movement.left    = -stepUnits; break;
+        case "Space":     movement.up      = +stepUnits; break;
+        case "ShiftLeft": movement.up      = -stepUnits; break;
+        case "ArrowUp":   handler.traverse();             break;
+        case "Enter":     takeScreenShot();               break;
     }
 };
 
 
 onkeyup = (event) => {
     const key = event.code;
-    if (key == "KeyW" && moveForward > 0) {
-        moveForward = 0;
-    } else if (key == "KeyS" && moveForward < 0) {
-        moveForward = 0;
-    } else if (key == "KeyD" && moveLeft < 0) {
-        moveLeft = 0;
-    } else if (key == "KeyA" && moveLeft > 0) {
-        moveLeft = 0;
-    } else if (key == "Space" && moveUp > 0) {
-        moveUp = 0;
-    } else if (key == "ShiftLeft" && moveUp < 0) {
-        moveUp = 0;
+    if ((key == "KeyW" && movement.forward > 0) || (key == "KeyS" && movement.forward < 0)) {
+        movement.forward = 0;
+    } else if ((key == "KeyA" && movement.left > 0) || (key == "KeyD" && movement.left < 0)) {
+        movement.left = 0;
+    } else if ((key == "Space" && movement.up > 0) || (key == "ShiftLeft" && movement.up < 0)) {
+        movement.up = 0;
+    } else if ((key == "KeyE" && movement.roll > 0) || (key == "KeyQ" && movement.roll < 0)) {
+        movement.roll = 0;
     }
 };
 
@@ -209,7 +222,7 @@ document.getElementById("file-upload").onchange = function() {
         try {
             mesh = new Mesh(Module.readMesh(file.name, reader.result));
             updateTree();
-            paint();
+            draw();
         } catch(err) {
             alert("Unsupported mesh format");
             console.error(err);
@@ -262,8 +275,11 @@ function initializeGL(canvas) {
 
 function update(curTime) {
     if (curTime - lastRenderTime >= 1000 / TARGET_FRAMERATE) {
-        camera.move(moveForward, moveLeft, moveUp);
-        paint();
+        camera.move(movement.forward, movement.left, movement.up);
+        if (movement.roll) {
+            camera.rotate(0, 0, movement.roll);
+        }
+        draw();
     }
     lastRenderTime = curTime;
     if (isViewerActive()) {
@@ -272,9 +288,53 @@ function update(curTime) {
 }
 
 
-function paint() {
+function drawPointLabel(
+    point,
+    persist = false,
+    viewDistance = 100,
+    maxFontSize = 256
+) {
+    const pos = camera.projectToScreen(point);
+    if (pos[2] < 0 || (!persist && distance2D(pos, [ui.width / 2, ui.height / 2]) > viewDistance)) {
+        return;
+    }
+
+    ctx.fillStyle = "#fed053";
+    const fontSize = maxFontSize / Math.min(1.0 + pos[2], 10);
+    ctx.font = `${fontSize}px Arial`;
+    ctx.fillText(`${toFixed(point[0])}, ${toFixed(point[1])}, ${toFixed(point[2])}`, pos[0], pos[1]);
+}
+
+
+function drawUI() {
+    ctx.clearRect(0, 0, ui.width, ui.height);
+
+    if (handler.ray) {
+        drawPointLabel(handler.ray.at(0), true);
+
+        for (let i = 0; i < handler.coords.length; i += 3) {
+            drawPointLabel([handler.coords[i], handler.coords[i+1], handler.coords[i+2]]);
+        }
+
+        ctx.fillStyle = "#fed053";
+        ctx.font = "24px Arial";
+        ctx.fillText(handler.info, 50, 50);
+    }
+
+    // update center point
+    ctx.beginPath();
+        ctx.fillStyle = "#fed053";
+        ctx.arc(ui.width / 2, ui.height / 2, 3, 0, 2 * Math.PI);
+    ctx.fill();
+}
+
+
+function draw() {
+    drawUI();
+
     gl.clear(gl.COLOR_BUFFER_BIT);
     camera.prepareScene();
+
     if (mesh) {
         mesh.draw();
         handler.draw();
@@ -284,14 +344,9 @@ function paint() {
 
 function resizeCanvas() {
     twgl.resizeCanvasToDisplaySize(canvas)
+    twgl.resizeCanvasToDisplaySize(ui);
+
     gl.viewport(0, 0, canvas.width, canvas.height);
     camera.resize(canvas.width, canvas.height);
-
-    // update center point
-    twgl.resizeCanvasToDisplaySize(ui);
-    uiContext.beginPath();
-        uiContext.fillStyle = "#fed053";
-        uiContext.arc(ui.width / 2, ui.height / 2, 3, 0, 2 * Math.PI);
-    uiContext.fill();
 }
 

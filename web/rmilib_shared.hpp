@@ -1,5 +1,11 @@
 #pragma once
 
+#include <emscripten.h>
+#include <emscripten/bind.h>
+#include <vector>
+#include <sstream>
+
+
 #include "rmilib/rmi.hpp"
 #include "rmilib/reader.hpp"
 
@@ -20,83 +26,18 @@ enum class SplitterType {
 };
 
 
-template<int N>
-struct NodeWrapper {
-    inline bool is_leaf() const {
-        return node->is_leaf();
-    }
-
-    inline const rmi::AABBox<float>& box() const {
-        return node->box();
-    }
-
-    inline std::vector<NodeWrapper> children() const {
-        const auto& child_nodes = node->child_nodes();
-        std::vector<NodeWrapper> res;
-        res.reserve(child_nodes.size());
-        for (const auto& child : child_nodes) {
-            res.emplace_back(&child);
-        }
-        return res;
-    }
-
-    NodeWrapper(const typename rmi::Tree<WebGLMesh, N>::Node* node): node(node) {
-    }
-
-    const typename rmi::Tree<WebGLMesh, N>::Node* node;
-};
-
-
-template<int N>
-auto register_tree(const std::string& name) {
-    emscripten::class_<NodeWrapper<N>>((name + "Node").c_str())
-        .property("box",      &NodeWrapper<N>::box)
-        .function("children", &NodeWrapper<N>::children)
-        .function("isLeaf",   &NodeWrapper<N>::is_leaf)
-        .function("intersects",
-            +[](const NodeWrapper<N>& wrapper, const rmi::Ray<float>& ray) {
-                std::vector<rmi::Vector3f> output;
-                for (const auto& cur : wrapper.node->triangles()) {
-                    auto intersection = ray.intersects<WebGLMesh>(cur);
-                    if (intersection.has_value()) {
-                        output.push_back(intersection.value());
-                    }
-                }
-                return output;
-            }
-        )
-        ;
-
-    emscripten::register_vector<NodeWrapper<N>>((name + "Nodes").c_str());
-
-    return emscripten::class_<rmi::Tree<WebGLMesh, N>>(name.c_str())
-        .class_function("forMesh", +[](WebGLMesh& mesh, SplitterType splitter) {
-            switch (splitter) {
-            case SplitterType::SAH:
-                return rmi::Tree<WebGLMesh, N>::for_mesh(mesh.begin(), mesh.end(), rmi::SAHSplitter<WebGLMesh, N>());
-            case SplitterType::Median:
-                return rmi::Tree<WebGLMesh, N>::for_mesh(mesh.begin(), mesh.end(), rmi::MedianSplitter<WebGLMesh, N>());
-            }
-        })
-        .function("intersects", +[](const rmi::Tree<WebGLMesh, N>& tree, const rmi::Ray<float>& ray) {
-            return ray.intersects(tree);
-        })
-        .function("root", +[](const rmi::Tree<WebGLMesh, N>& tree) {
-            return NodeWrapper<N>(&tree.top());
-        })
-        ;
-}
-
-
-void register_shared() {
+auto register_shared() {
     using namespace emscripten;
 
-    class_<rmi::Vector3f>("Vector")
-        .constructor<float, float, float>()
-        .property("x", &rmi::Vector3f::x)
-        .property("y", &rmi::Vector3f::y)
-        .property("z", &rmi::Vector3f::z)
+    value_array<rmi::Vector3f>("Vector")
+        .element(&rmi::Vector3f::x, &rmi::Vector3f::set_x)
+        .element(&rmi::Vector3f::y, &rmi::Vector3f::set_y)
+        .element(&rmi::Vector3f::z, &rmi::Vector3f::set_z)
         ;
+
+    class_<std::pair<float, float>>("FloatPair")
+        .property("first",  &std::pair<float, float>::first)
+        .property("second", &std::pair<float, float>::second);
 
     register_vector<rmi::Vector3f>("PointsList");
 
@@ -118,15 +59,50 @@ void register_shared() {
     class_<rmi::AABBox<float>>("AABB")
         .property("min", &rmi::AABBox<float>::min)
         .property("max", &rmi::AABBox<float>::max)
-        .function("intersects",
-            +[](const rmi::AABBox<float>& aabb, const rmi::Ray<float>& ray) { return ray.intersects(aabb); }
-        )
         ;
 
-    class_<rmi::Ray<float>>("Ray")
-        .constructor<rmi::Vector3f, rmi::Vector3f>()
-        .function("at", &rmi::Ray<float>::at)
+    class_<typename rmi::KDTree<WebGLMesh>::Node>("KDTreeNode")
+        .property("box",      &rmi::KDTree<WebGLMesh>::Node::box)
+        .function("left",     +[](const typename rmi::KDTree<WebGLMesh>::Node* node) { return &node->left(); }, allow_raw_pointers())
+        .function("right",    +[](const typename rmi::KDTree<WebGLMesh>::Node* node) { return &node->right(); }, allow_raw_pointers())
+        .function("isLeaf",   &rmi::KDTree<WebGLMesh>::Node::is_leaf)
+        ;
+
+    class_<rmi::KDTree<WebGLMesh>>("KDTree")
+        .class_function("forMesh", +[](WebGLMesh& mesh, SplitterType splitter) {
+            switch (splitter) {
+            case SplitterType::SAH:
+                return rmi::KDTree<WebGLMesh>::for_mesh(mesh, rmi::SAHSplitter<WebGLMesh>());
+            case SplitterType::Median:
+                return rmi::KDTree<WebGLMesh>::for_mesh(mesh, rmi::MedianSplitter<WebGLMesh>());
+            }
+        })
+        .function("intersects", +[](const rmi::KDTree<WebGLMesh>& tree, const rmi::Ray<float>& ray) {
+            return ray.intersects(tree);
+        })
+        .function("root", +[](const rmi::KDTree<WebGLMesh>& tree) { return &tree.top(); }, allow_raw_pointers())
         ;
 
     function("readMesh", &read_mesh_from_string);
+
+    return class_<rmi::Ray<float>>("Ray")
+        .constructor<rmi::Vector3f, rmi::Vector3f>()
+        .function("at", &rmi::Ray<float>::at)
+        .function("isIntersectsAABB", &rmi::Ray<float>::is_intersects)
+        .function("intersectsNode", +[](const rmi::Ray<float>& ray, const typename rmi::KDTree<WebGLMesh>::Node* node) {
+            std::vector<rmi::Vector3f> result;
+            for (const auto& triangle : *node) {
+                if (auto intersection = ray.intersects<WebGLMesh>(triangle); intersection) {
+                    result.push_back(std::move(*intersection));
+                }
+            }
+            return result;
+        }, allow_raw_pointers())
+        .function("intersectsAABB", +[](const rmi::Ray<float>& ray, const rmi::AABBox<float>& box) {
+            return ray.intersects(box);
+        })
+        .function("intersectsKDTree", +[](const rmi::Ray<float>& ray, const rmi::KDTree<WebGLMesh>& tree) {
+            return ray.intersects(tree);
+        })
+        ;
 }
