@@ -143,14 +143,14 @@ TEST_CASE("Ray and triangular mesh intersection methods", "[ray][mesh][kdtree]")
         std::vector<double> coords;
         std::vector<size_t> indices;
         std::vector<rmi::Vector3<double>> expected_intersections;
-        for (double x = 1; x <= 1000; ++x) {
+        for (double x = 1.; x <= 1000.; ++x) {
             coords.push_back(x); coords.push_back(0); coords.push_back(0);
             coords.push_back(x); coords.push_back(1); coords.push_back(0);
             coords.push_back(x); coords.push_back(0); coords.push_back(1);
 
-            indices.push_back((x-1)*3 + 0);
-            indices.push_back((x-1)*3 + 1);
-            indices.push_back((x-1)*3 + 2);
+            indices.push_back((x-1.)*3. + 0.);
+            indices.push_back((x-1.)*3. + 1.);
+            indices.push_back((x-1.)*3. + 2.);
 
             expected_intersections.emplace_back(x, 0, 0);
         }
