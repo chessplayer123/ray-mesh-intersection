@@ -49,6 +49,8 @@ jobs:
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DBUILD_TESTS=on
+        -DINCLUDE_OMP=on
+        -DINCLUDE_POOL=on
         -S ${{ github.workspace }}
 
     - name: Build
