@@ -11,6 +11,15 @@
 #include <algorithm>
 #include <math.h>
 
+#ifdef RMI_INCLUDE_POOL
+#    include "wsq.hpp"
+#    include <thread>
+#endif
+
+#ifdef RMI_INCLUDE_OMP
+#    include <omp.h>
+#endif
+
 
 namespace rmi {
 
@@ -31,13 +40,18 @@ public:
     bool    operator!=(const Vector3& rhs) const;
     T       operator[](int index) const;
 
-    T           length() const;
-    T           dot(const Vector3& rhs) const;
-    Vector3     cross(const Vector3& rhs) const;
-    Vector3     ort() const;
-    constexpr T x() const;
-    constexpr T y() const;
-    constexpr T z() const;
+    T       length() const;
+    T       dot(const Vector3& rhs) const;
+    Vector3 cross(const Vector3& rhs) const;
+    Vector3 ort() const;
+
+    inline T x() const { return coords[0]; }
+    inline T y() const { return coords[1]; }
+    inline T z() const { return coords[2]; }
+
+    inline void set_x(double x) { coords[0] = x; }
+    inline void set_y(double y) { coords[1] = y; }
+    inline void set_z(double z) { coords[2] = z; }
 private:
     std::array<T, 3> coords;
 };
@@ -63,30 +77,18 @@ struct AABBox {
 
 
 template<typename T>
-class Range {
-public:
-    Range(T begin, T end): m_begin(begin), m_end(end) {}
-
-    inline T    begin()  const { return m_begin; }
-    inline T    end()    const { return m_end; }
-    inline auto length() const { return std::distance(m_begin, m_end); }
-private:
-    T m_begin;
-    T m_end;
-};
-
-
-template<typename T>
 struct SAHSplitter {
     SAHSplitter(int threshold = 16): threshold(threshold) {}
 
     typename T::iterator operator()(
-        const Range<typename T::iterator>& range,
+        typename T::iterator begin,
+        typename T::iterator end,
         int depth
     ) const;
 
     std::pair<typename T::iterator, typename T::float_t> find_min_sah(
-        const Range<typename T::iterator>& range
+        typename T::iterator begin,
+        typename T::iterator end
     ) const;
 
     int threshold;
@@ -98,7 +100,8 @@ struct MedianSplitter {
     MedianSplitter(int depth_limit = 16): depth_limit(depth_limit) {}
 
     typename T::iterator operator()(
-        const Range<typename T::iterator>& range,
+        typename T::iterator begin,
+        typename T::iterator end,
         int depth
     ) const;
 
@@ -107,85 +110,100 @@ struct MedianSplitter {
 
 
 template<typename T>
+class Mesh {
+public:
+    struct Element {
+        Element(
+            Vector3<typename T::float_t> v1,
+            Vector3<typename T::float_t> v2,
+            Vector3<typename T::float_t> v3
+        ): v1(v1), v2(v2), v3(v3), center((v1 + v2 + v3) / 3)
+        {}
+
+        Vector3<typename T::float_t> v1, v2, v3, center;
+    };
+
+    using iterator = typename std::vector<Element>::iterator;
+
+    inline iterator begin() { return elements.begin(); }
+    inline iterator end()   { return elements.end(); }
+
+    void setup(typename std::vector<Element>::size_type size);
+private:
+    std::vector<Element> elements;
+};
+
+
+template<typename T>
 class KDTree {
 public:
-    typedef typename T::iterator mesh_iterator;
+    using mesh_iterator = typename T::iterator;
 
     class Node {
     public:
+        friend KDTree;
+
         Node(
             AABBox<typename T::float_t> box,
-            Range<mesh_iterator> range,
             std::unique_ptr<Node>&& left,
             std::unique_ptr<Node>&& right
-        ): bounding_box(box), range(range), m_left(std::move(left)), m_right(std::move(right)) {}
+        ): bounding_box(box), m_begin(left->begin()), m_end(right->end()), m_left(std::move(left)), m_right(std::move(right)) {}
 
         Node(
             AABBox<typename T::float_t> box,
-            Range<mesh_iterator> range
-        ): bounding_box(box), range(range), m_left(nullptr), m_right(nullptr) {}
+            mesh_iterator begin,
+            mesh_iterator end
+        ): bounding_box(box), m_begin(begin), m_end(end), m_left(nullptr), m_right(nullptr) {}
 
-        template<typename Splitter>
-        static std::unique_ptr<Node> build(const Range<typename T::iterator>& range, int depth, const Splitter& splitter);
-
-        inline bool                               is_leaf()   const { return !m_left && !m_right; }
-        inline bool                               has_left()  const { return static_cast<bool>(m_left); }
-        inline bool                               has_right() const { return static_cast<bool>(m_right); }
-        inline const Node&                        left()      const { return *m_left; }
-        inline const Node&                        right()     const { return *m_right; }
-        inline const AABBox<typename T::float_t>& box()       const { return bounding_box; }
-        inline const Range<mesh_iterator>&        triangles() const { return range; }
+        inline bool                               is_leaf() const { return !m_left && !m_right; }
+        inline const Node&                        left()    const { return *m_left; }
+        inline const Node&                        right()   const { return *m_right; }
+        inline const AABBox<typename T::float_t>& box()     const { return bounding_box; }
+        inline mesh_iterator                      begin()   const { return m_begin; }
+        inline mesh_iterator                      end()     const { return m_end; }
     private:
+        template<typename Splitter>
+        static std::unique_ptr<Node> build(
+            mesh_iterator begin,
+            mesh_iterator end,
+            int depth,
+            const Splitter& splitter
+        );
+
+#ifdef RMI_INCLUDE_OMP
+        template<typename Splitter>
+        static std::unique_ptr<Node> omp_build(
+            mesh_iterator begin,
+            mesh_iterator end,
+            int depth,
+            const Splitter& splitter
+        );
+#endif
+
         AABBox<typename T::float_t> bounding_box;
-        Range<mesh_iterator> range;
-        std::unique_ptr<Node> m_left;
-        std::unique_ptr<Node> m_right;
+
+        mesh_iterator               m_begin;
+        mesh_iterator               m_end;
+
+        std::unique_ptr<Node>       m_left;
+        std::unique_ptr<Node>       m_right;
     };
 
     KDTree(std::unique_ptr<Node>&& root): root(std::move(root)) {}
 
     template<typename Splitter = SAHSplitter<T>>
-    inline static KDTree<T> for_mesh(
-        mesh_iterator begin,
-        mesh_iterator end,
-        const Splitter& splitter = Splitter()
-    ) {
-        return KDTree<T>(std::move(Node::build(Range(begin, end), 0, splitter)));
-    }
+    static KDTree<T> for_mesh(Mesh<T>& mesh, const Splitter& splitter = Splitter());
 
-    inline const Node& top() const
-    { return *root; }
+#ifdef RMI_INCLUDE_OMP
+    template<typename Splitter = SAHSplitter<T>>
+    static KDTree<T> for_mesh(Mesh<T>& mesh, int threads_count, const Splitter& splitter = Splitter());
+#endif
+
+    inline const Node& top() const {
+        return *root;
+    }
 private:
     std::unique_ptr<Node> root;
-};
-
-
-template<typename mesh_type, typename float_type, typename index_type>
-class Mesh {
-public:
-    struct Element {
-        template<index_type vertex_num>
-        inline constexpr Vector3<float_type> v() const
-        { return mesh->template v<vertex_num>(index); }
-
-        index_type          index;
-        Vector3<float_type> center;
-        const mesh_type*    mesh;
-    };
-
-    using float_t = float_type;
-    using index_t = index_type;
-    using iterator = typename std::vector<Element>::iterator;
-
-    Mesh(index_t size);
-
-    iterator begin();
-    iterator end();
-private:
-    void setup();
-
-    bool is_setup;
-    std::vector<Element> elements;
 };
 
 
@@ -200,28 +218,50 @@ public:
 
     std::pair<float_t, float_t> intersects(const AABBox<float_t>& box) const;
 
-    template<typename mesh_t>
-    std::optional<float_t> intersects(
-        const typename mesh_t::Element& triangle,
-        float_t epsilon = std::numeric_limits<float_t>::epsilon()
-    ) const;
-
-    template<typename mesh_t, typename index_t>
-    std::vector<float_t> intersects(
-        Mesh<mesh_t, float_t, index_t>& mesh,
+    template<typename T>
+    std::optional<Vector3<float_t>> intersects(
+        const typename Mesh<T>::Element& triangle,
         float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
 
     template<typename T>
-    std::vector<float_t> intersects(
+    std::vector<Vector3<float_t>> intersects(
+        Mesh<T>& mesh,
+        float_t epsilon = std::numeric_limits<float_t>::epsilon()
+    ) const;
+
+    template<typename T>
+    std::vector<Vector3<float_t>> intersects(
         const KDTree<T>& tree,
         float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
+
+#ifdef RMI_INCLUDE_POOL
+    template<typename T>
+    std::vector<Vector3<float_t>> pool_intersects(const KDTree<T>& tree, int threads_count) const;
+#endif
+
+#ifdef RMI_INCLUDE_OMP
+    template<typename T>
+    std::vector<Vector3<float_t>> omp_intersects(
+        const KDTree<T>& tree,
+        int threads_count,
+        float_t epsilon = std::numeric_limits<float_t>::epsilon()
+    ) const;
+
+    template<typename T>
+    std::vector<Vector3<float_t>> omp_intersects(
+        Mesh<T>& mesh,
+        int threads_count,
+        float_t epsilon = std::numeric_limits<float_t>::epsilon()
+    ) const;
+#endif
+
 private:
     template<typename T>
     void recursive_intersects(
         const typename KDTree<T>::Node& node,
-        std::vector<float_t>& output,
+        std::vector<Vector3<float_t>>& output,
         float_t epsilon = std::numeric_limits<float_t>::epsilon()
     ) const;
 
@@ -231,6 +271,7 @@ private:
 };
 
 } // namespace rmi
+
 
 
 namespace rmi {
@@ -323,21 +364,6 @@ inline Vector3<T> Vector3<T>::ort() const {
 }
 
 template<typename T>
-inline constexpr T Vector3<T>::x() const {
-    return coords[0];
-}
-
-template<typename T>
-inline constexpr T Vector3<T>::y() const {
-    return coords[1];
-}
-
-template<typename T>
-inline constexpr T Vector3<T>::z() const {
-    return coords[2];
-}
-
-template<typename T>
 inline T Vector3<T>::operator[](int index) const {
     return coords[index];
 }
@@ -346,9 +372,9 @@ inline T Vector3<T>::operator[](int index) const {
 // AABBox implementation
 template<typename T>
 AABBox<typename T::float_t> get_bounding_box(const typename T::Element& element) {
-    const Vector3 v1 = element.template v<0>();
-    const Vector3 v2 = element.template v<1>();
-    const Vector3 v3 = element.template v<2>();
+    const Vector3 v1 = element.v1;
+    const Vector3 v2 = element.v2;
+    const Vector3 v3 = element.v3;
 
     return {
         Vector3(
@@ -362,14 +388,16 @@ AABBox<typename T::float_t> get_bounding_box(const typename T::Element& element)
             std::max(v1.z(), std::max(v2.z(), v3.z()))
         )
     };
-
 }
 
 template<typename T>
-AABBox<typename T::float_t> get_bounding_box(const Range<typename T::iterator>& range) {
+AABBox<typename T::float_t> get_bounding_box(
+    typename T::iterator begin,
+    typename T::iterator end
+) {
     AABBox<typename T::float_t> box;
-    for (const auto& cur : range) {
-        box += get_bounding_box<T>(cur);
+    for (auto it = begin; it != end; ++it) {
+        box += get_bounding_box<T>(*it);
     }
     return box;
 }
@@ -425,48 +453,63 @@ void AABBox<T>::operator+=(const AABBox<T>& box) {
 
 
 // Mesh implementation
-template<typename mesh_t, typename float_t, typename index_t>
-Mesh<mesh_t, float_t, index_t>::Mesh(index_t size): is_setup(false), elements(size) {
-}
-
-template<typename mesh_t, typename float_t, typename index_t>
-inline typename Mesh<mesh_t, float_t, index_t>::iterator Mesh<mesh_t, float_t, index_t>::begin() {
-    if (!is_setup) setup();
-    return elements.begin();
-}
-
-template<typename mesh_t, typename float_t, typename index_t>
-inline typename Mesh<mesh_t, float_t, index_t>::iterator Mesh<mesh_t, float_t, index_t>::end() {
-    if (!is_setup) setup();
-    return elements.end();
-}
-
-template<typename mesh_t, typename float_t, typename index_t>
-void Mesh<mesh_t, float_t, index_t>::setup() {
-    is_setup = true;
-    auto child = static_cast<const mesh_t*>(this);
-    for (index_t i = 0; i < elements.size(); ++i) {
-        elements[i] = {
-            i,
-            (child->template v<0>(i) + child->template v<1>(i) + child->template v<2>(i)) / 3,
-            child
-        };
+template<typename T>
+void Mesh<T>::setup(typename std::vector<typename Mesh<T>::Element>::size_type size) {
+    auto mesh = static_cast<T*>(this);
+    elements.clear();
+    elements.reserve(size);
+    for (typename T::index_t i = 0; i < size; ++i) {
+        elements.emplace_back(
+            mesh->template v<0>(i),
+            mesh->template v<1>(i),
+            mesh->template v<2>(i)
+        );
     }
 }
 
 
 // Tree implementation
+
+template<typename T>
+template<typename Splitter>
+inline KDTree<T> KDTree<T>::for_mesh(
+    Mesh<T>& mesh,
+    const Splitter& splitter
+) {
+    return KDTree<T>(Node::build(mesh.begin(), mesh.end(), 0, splitter));
+}
+
+
+#ifdef RMI_INCLUDE_OMP
+template<typename T>
+template<typename Splitter>
+inline KDTree<T> KDTree<T>::for_mesh(
+    Mesh<T>& mesh,
+    int threads_count,
+    const Splitter& splitter
+) {
+    std::unique_ptr<typename KDTree<T>::Node> node;
+    #pragma omp parallel num_threads(threads_count) shared(node, mesh)
+    #pragma omp single
+    node = std::move(Node::omp_build(mesh.begin(), mesh.end(), 0, splitter));
+
+    return KDTree<T>(std::move(node));
+}
+#endif
+
+
 template<typename T>
 std::pair<typename T::iterator, typename T::float_t> SAHSplitter<T>::find_min_sah(
-    const Range<typename T::iterator>& range
+    typename T::iterator begin,
+    typename T::iterator end
 ) const {
-    const auto length = range.length();
+    const auto length = std::distance(begin, end);
 
     std::vector<AABBox<typename T::float_t>> pref(length + 1);
     std::vector<AABBox<typename T::float_t>> suf(length + 1);
 
     typename T::iterator::difference_type i = 0;
-    for (auto it = range.begin(), rit = std::prev(range.end()); it != range.end(); ++it, ++i, --rit) {
+    for (auto it = begin, rit = std::prev(end); it != end; ++it, ++i, --rit) {
         pref[i + 1] = pref[i] + get_bounding_box<T>(*it);
         suf[i + 1] = suf[i] + get_bounding_box<T>(*rit);
     }
@@ -481,22 +524,31 @@ std::pair<typename T::iterator, typename T::float_t> SAHSplitter<T>::find_min_sa
         }
     }
 
-    return std::make_pair(std::next(range.begin(), mid), min_sah);
+    return std::make_pair(
+        std::next(begin, mid),
+        min_sah
+    );
 }
 
 template<typename T>
 typename T::iterator SAHSplitter<T>::operator()(
-    const Range<typename T::iterator>& range, int
+    typename T::iterator begin,
+    typename T::iterator end,
+    int
 ) const {
+    if (std::distance(begin, end) <= threshold) {
+        return end;
+    }
+
     int splitting_axis = 0;
     auto min_sah = std::numeric_limits<typename T::float_t>::max();
-    auto split = range.end();
+    auto split = end;
     for (int axis = 0; axis < 3; ++axis) {
-        std::sort(range.begin(), range.end(), [axis](const auto& it1, const auto& it2) {
+        std::sort(begin, end, [axis](const auto& it1, const auto& it2) {
             return it1.center[axis] < it2.center[axis];
         });
 
-        if (const auto [mid, sah] = find_min_sah(range); sah < min_sah) {
+        if (const auto [mid, sah] = find_min_sah(begin, end); sah < min_sah) {
             min_sah = sah;
             splitting_axis = axis;
             split = mid;
@@ -504,13 +556,9 @@ typename T::iterator SAHSplitter<T>::operator()(
     }
 
     if (splitting_axis != 2) {
-        std::sort(range.begin(), range.end(), [splitting_axis](const auto& it1, const auto& it2) {
+        std::sort(begin, end, [splitting_axis](const auto& it1, const auto& it2) {
             return it1.center[splitting_axis] < it2.center[splitting_axis];
         });
-    }
-
-    if (range.length() <= threshold) {
-        return range.end();
     }
     return split;
 }
@@ -518,45 +566,75 @@ typename T::iterator SAHSplitter<T>::operator()(
 
 template<typename T>
 typename T::iterator MedianSplitter<T>::operator()(
-    const Range<typename T::iterator>& range,
+    typename T::iterator begin,
+    typename T::iterator end,
     int depth
 ) const {
-    auto length = range.length();
+    auto length = std::distance(begin, end);
 
     if (depth >= depth_limit || length <= 32) {
-        return range.end();
+        return end;
     }
 
     int axis = depth % 3;
-    std::sort(range.begin(), range.end(), [axis](const auto& it1, const auto& it2) {
+    std::sort(begin, end, [axis](const auto& it1, const auto& it2) {
         return it1.center[axis] < it2.center[axis];
     });
 
-    return std::next(range.begin(), length / 2);
+    return std::next(begin, length / 2);
 }
 
 
 template<typename T>
 template<typename Splitter>
 std::unique_ptr<typename KDTree<T>::Node> KDTree<T>::Node::build(
-    const Range<typename T::iterator>& range,
+    typename T::iterator begin,
+    typename T::iterator end,
     int depth,
     const Splitter& splitter
 ) {
-    auto split = splitter(range, depth);
-    if (split == range.end()) {
-        return std::make_unique<Node>(get_bounding_box<T>(range), range);
+    auto split = splitter(begin, end, depth);
+    if (split == end) {
+        return std::make_unique<Node>(get_bounding_box<T>(begin, end), begin, end);
     }
 
-    auto left = build(Range(range.begin(), split), depth + 1, splitter);
-    auto right = build(Range(split, range.end()), depth + 1, splitter);
+    auto left = build(begin, split, depth + 1, splitter);
+    auto right = build(split, end, depth + 1, splitter);
 
     return std::make_unique<Node>(
         left->box() + right->box(),
-        range,
         std::move(left), std::move(right)
     );
 }
+
+#ifdef RMI_INCLUDE_OMP
+template<typename T>
+template<typename Splitter>
+std::unique_ptr<typename KDTree<T>::Node> KDTree<T>::Node::omp_build(
+    typename T::iterator begin,
+    typename T::iterator end,
+    int depth,
+    const Splitter& splitter
+) {
+    auto split = splitter(begin, end, depth);
+    if (split == end) {
+        return std::make_unique<typename KDTree<T>::Node>(get_bounding_box<T>(begin, end), begin, end);
+    }
+    std::unique_ptr<typename KDTree<T>::Node> left;
+    std::unique_ptr<typename KDTree<T>::Node> right;
+
+    #pragma omp task shared(left)
+    left = omp_build(begin, split, depth + 1, splitter);
+    #pragma omp task shared(right)
+    right = omp_build(split, end, depth + 1, splitter);
+    #pragma omp taskwait
+
+    return std::make_unique<typename KDTree<T>::Node>(
+        left->box() + right->box(),
+        std::move(left), std::move(right)
+    );
+}
+#endif
 
 
 // Ray implementation
@@ -586,17 +664,13 @@ Ray<float_t>::Ray(Vector3<float_t> origin, Vector3<float_t> direction):
  * https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
  */
 template<typename float_t>
-template<typename mesh_t>
-std::optional<float_t> Ray<float_t>::intersects(
-    const typename mesh_t::Element& triangle,
+template<typename T>
+std::optional<Vector3<float_t>> Ray<float_t>::intersects(
+    const typename Mesh<T>::Element& triangle,
     float_t epsilon
 ) const {
-    const Vector3 v1 = triangle.template v<0>();
-    const Vector3 v2 = triangle.template v<1>();
-    const Vector3 v3 = triangle.template v<2>();
-
-    Vector3 edge1 = v2 - v1;
-    Vector3 edge2 = v3 - v1;
+    Vector3 edge1 = triangle.v2 - triangle.v1;
+    Vector3 edge2 = triangle.v3 - triangle.v1;
     Vector3 ray_cross_e2 = vector.cross(edge2);
 
     float_t det = edge1.dot(ray_cross_e2);
@@ -605,7 +679,7 @@ std::optional<float_t> Ray<float_t>::intersects(
     }
     float_t inv_det = 1.0 / det;
 
-    Vector3 s = origin - v1;
+    Vector3 s = origin - triangle.v1;
     float_t u = inv_det * s.dot(ray_cross_e2);
     if (u < 0.0 || u > 1.0) {
         return std::nullopt;
@@ -622,7 +696,7 @@ std::optional<float_t> Ray<float_t>::intersects(
         return std::nullopt;
     }
 
-    return t;
+    return at(t);
 }
 
 
@@ -630,20 +704,20 @@ template<typename float_t>
 template<typename T>
 void Ray<float_t>::recursive_intersects(
     const typename KDTree<T>::Node& node,
-    std::vector<float_t>& output,
+    std::vector<Vector3<float_t>>& output,
     float_t epsilon
 ) const {
     if (node.is_leaf()) {
-        for (const auto& triangle : node.triangles()) {
+        for (const auto& triangle : node) {
             if (auto intersection = intersects<T>(triangle, epsilon); intersection) {
-                output.push_back(*intersection);
+                output.push_back(std::move(*intersection));
             }
         }
     } else {
-        if (node.has_left() && is_intersects(node.left().box())) {
+        if (is_intersects(node.left().box())) {
             recursive_intersects<T>(node.left(), output, epsilon);
         }
-        if (node.has_right() && is_intersects(node.right().box())) {
+        if (is_intersects(node.right().box())) {
             recursive_intersects<T>(node.right(), output, epsilon);
         }
     }
@@ -652,7 +726,7 @@ void Ray<float_t>::recursive_intersects(
 
 template<typename float_t>
 template<typename T>
-std::vector<float_t> Ray<float_t>::intersects(
+std::vector<Vector3<float_t>> Ray<float_t>::intersects(
     const KDTree<T>& tree,
     float_t epsilon
 ) const {
@@ -661,7 +735,7 @@ std::vector<float_t> Ray<float_t>::intersects(
         return {};
     }
 
-    std::vector<float_t> output;
+    std::vector<Vector3<float_t>> output;
     recursive_intersects<T>(node, output, epsilon);
     return output;
 }
@@ -671,16 +745,16 @@ std::vector<float_t> Ray<float_t>::intersects(
  * Simple iterative intersection search
  */
 template<typename float_t>
-template<typename mesh_t, typename index_t>
-std::vector<float_t> Ray<float_t>::intersects(
-    Mesh<mesh_t, float_t, index_t>& mesh,
+template<typename T>
+std::vector<Vector3<float_t>> Ray<float_t>::intersects(
+    Mesh<T>& mesh,
     float_t epsilon
 ) const {
-    std::vector<float_t> intersections;
+    std::vector<Vector3<float_t>> intersections;
 
     for (const auto& cur : mesh) {
-        if (auto intersection = intersects<mesh_t>(cur, epsilon); intersection) {
-            intersections.push_back(*intersection);
+        if (auto intersection = intersects<T>(cur, epsilon); intersection) {
+            intersections.push_back(std::move(*intersection));
         }
     }
 
@@ -711,6 +785,198 @@ inline bool Ray<float_t>::is_intersects(const AABBox<float_t>& box) const {
     auto [tmin, tmax] = intersects(box);
     return tmax >= 0.0 && tmin <= tmax;
 }
+
+#ifdef RMI_INCLUDE_POOL
+namespace parallel {
+
+template<typename T>
+class ThreadPool {
+public:
+    using Node = typename KDTree<T>::Node;
+    using float_t = typename T::float_t;
+    using index_t = typename T::index_t;
+
+    ThreadPool(
+        const Ray<float_t>& ray,
+        const Node* root,
+        int threads_count
+    ):
+        threads(threads_count), queues(threads_count), results(threads_count),
+        counter(0), threads_count(threads_count), ray(ray)
+    {
+        distribute_load(root);
+
+        for (int i = 0; i < threads_count; ++i) {
+            threads[i] = std::thread(&ThreadPool::worker_thread, this, i);
+        }
+    }
+
+    std::vector<Vector3<float_t>> wait_result() {
+        std::vector<Vector3<float_t>> result;
+        for (int id = 0; id < threads_count; ++id) {
+            threads[id].join();
+            std::copy(results[id].begin(), results[id].end(), std::back_inserter(result));
+        }
+        return result;
+    }
+private:
+    void distribute_load(const Node* root) {
+        queues[0].push(root);
+    }
+
+    std::optional<const Node*> pop_node(int thread_id) {
+        auto node = queues[thread_id].pop();
+        if (node) {
+            return node;
+        }
+
+        ++counter;
+        while (counter < threads_count) {
+            for (auto& queue : queues) {
+                auto steal = queue.steal();
+                if (steal) {
+                    --counter;
+                    return steal;
+                }
+            }
+        }
+        return std::nullopt;
+    }
+
+    void worker_thread(int thread_id) {
+        std::optional<const Node*> next = pop_node(thread_id);
+
+        while(next) {
+            auto cur = *next;
+
+            if (cur->is_leaf()) {
+                for (const auto& triangle : *cur) {
+                    if (auto intersection = ray.template intersects<T>(triangle); intersection) {
+                        results[thread_id].push_back(std::move(*intersection));
+                    }
+                }
+                next = pop_node(thread_id);
+            } else {
+                bool intersects_left  = ray.is_intersects(cur->left().box());
+                bool intersects_right = ray.is_intersects(cur->right().box());
+
+                switch ((intersects_left << 1) | intersects_right) {
+                case 0b00: next = pop_node(thread_id); break;
+                case 0b01: next = &cur->right(); break;
+                case 0b10: next = &cur->left(); break;
+                case 0b11:
+                    next = &cur->left();
+                    queues[thread_id].push(&cur->right());
+                    break;
+                }
+            }
+        }
+    }
+
+    std::vector<std::thread> threads;
+    std::vector<WorkStealingQueue<const Node*>> queues;
+    std::vector<std::vector<Vector3<float_t>>> results;
+
+    std::atomic_int counter;
+    int threads_count;
+
+    const Ray<float_t>& ray;
+};
+
+} // namespace parallel
+
+
+template<typename float_t>
+template<typename T>
+std::vector<Vector3<float_t>> Ray<float_t>::pool_intersects(
+    const KDTree<T>& tree,
+    int threads_count
+) const {
+    const auto& root = tree.top();
+    if (!is_intersects(root.box())) {
+        return {};
+    }
+
+    parallel::ThreadPool<T> pool(*this, &root, threads_count);
+    return pool.wait_result();
+}
+
+#endif
+
+
+#ifdef RMI_INCLUDE_OMP
+
+template<typename float_t>
+template<typename T>
+std::vector<Vector3<float_t>> Ray<float_t>::omp_intersects(
+    Mesh<T>& mesh,
+    int threads_count,
+    float_t epsilon
+) const {
+    std::vector<Vector3<float_t>> intersections;
+
+    #pragma omp parallel for shared(intersections) num_threads(threads_count)
+    for (const auto& triangle : mesh) {
+        if (auto intersection = intersects<T>(triangle, epsilon); intersection) {
+            #pragma omp critical
+            intersections.push_back(std::move(*intersection));
+        }
+    }
+
+    return intersections;
+}
+
+template<typename T>
+void omp_recursive_intersects(
+    const Ray<typename T::float_t>& ray,
+    const typename KDTree<T>::Node& node,
+    std::vector<Vector3<typename T::float_t>>& output,
+    double epsilon
+) {
+    if (node.is_leaf()) {
+        for (const auto& cur : node) {
+            if (auto intersection = ray.template intersects<T>(cur, epsilon); intersection) {
+                #pragma omp critical
+                output.push_back(std::move(*intersection));
+            }
+        }
+    } else {
+        if (ray.is_intersects(node.left().box())) {
+            #pragma omp task shared(output, node)
+            omp_recursive_intersects<T>(ray, node.left(), output, epsilon);
+        }
+
+        if (ray.is_intersects(node.right().box())) {
+            #pragma omp task shared(output, node)
+            omp_recursive_intersects<T>(ray, node.right(), output, epsilon);
+        }
+    }
+}
+
+
+template<typename float_t>
+template<typename T>
+std::vector<Vector3<float_t>> Ray<float_t>::omp_intersects(
+    const KDTree<T>& tree,
+    int threads_count,
+    float_t epsilon
+) const {
+    const auto& root = tree.top();
+    if (!is_intersects(root.box())) {
+        return {};
+    }
+
+    std::vector<Vector3<float_t>> output;
+
+    #pragma omp parallel shared(output, root) num_threads(threads_count)
+    #pragma omp single
+    omp_recursive_intersects<T>(*this, root, output, epsilon);
+    #pragma omp taskwait
+
+    return output;
+}
+
+#endif // RMI_INCLUDE_OMP
 
 
 } // namespace rmi
