@@ -8,7 +8,7 @@
     <body>
         <canvas class="canvas"></canvas>
         <canvas class="canvas"></canvas>
-        
+
         <dialog open id="dialog" class="center-message box">
             <pre style="text-align: center;" class="row">Allow parallel execution? <i>(experimental)</i></pre>
             <div class="hor-options row">
@@ -18,35 +18,17 @@
         </dialog>
 
         <div class="box center-message" id="menu">
-<pre class="row"><b>Left click on canvas</b> to start movement
-<b>wasd</b> to move around
-<b>Space</b> / <b>Shift</b> to move up / down
-<b>Left Click</b> to cast a ray
-<b>Enter</b> to take screenshot</pre>
+<pre class="row"><b>Left click on canvas</b> - start movement
+<b>wasd</b> - move around
+<b>qe</b> - roll left / right
+<b>Space</b> / <b>Shift</b> - move up / down
+<b>Left Click</b> - cast a ray
+<b>Mouse scroll</b> - change speed
+<b>Enter</b> - take screenshot</pre>
 
             <div class="row option" style="display: flex;">
                 <input id="threads-count" disabled type="range" min="1" max="8" step="1" value="1" oninput="this.nextElementSibling.value = this.value + ' thread(-s)'"/>
                 <output>1 thread(-s)</output>
-            </div>
-
-            <div class="row selector-box">
-                Tree
-                <div class="hor-options">
-                    <span class="option">
-                        <input id="kdtree-option" type="radio" name="tree" checked value="kdtree" onclick="updateTree()"/>
-                        <label for="kdtree-option" class="label">KD-Tree</label>
-                    </span>
-
-                    <span class="option">
-                        <input id="quadtree-option" type="radio" name="tree" value="quadtree" onclick="updateTree()"/>
-                        <label for="quadtree-option" class="label">Quadtree</label>
-                    </span>
-
-                    <span class="option">
-                        <input id="octree-option" type="radio" name="tree" value="octree" onclick="updateTree()"/>
-                        <label for="octree-option" class="label">Octree</label>
-                    </span>
-                </div>
             </div>
 
             <div class="row selector-box">
@@ -76,8 +58,6 @@
 
             <div class="row label option" onclick="location.reload();">Back</div>
         </div>
-
-        <pre class="box" id="app-data"></pre>
 
         <script id="shader-vs" type="x-shader/x-vertex">
             #version 300 es
