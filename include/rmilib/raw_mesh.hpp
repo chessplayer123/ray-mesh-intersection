@@ -38,7 +38,7 @@ public:
         return m_indices;
     }
 private:
-    index_t m_size;
+    size_t m_size;
     std::vector<float_t> m_vertices;
     std::vector<index_t> m_indices;
 };
