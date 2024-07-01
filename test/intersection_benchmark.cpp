@@ -10,13 +10,12 @@
 #include "rmilib/raw_mesh.hpp"
 #include "rmilib/reader.hpp"
 #include "rmilib/rmi.hpp"
-#include "rmilib/rmi_parallel.hpp" 
 
 
 const std::string filename = "../../data/Fantasy_Castle.stl";
 TriangularMesh mesh = read_raw_triangular_mesh<double, size_t>(filename);
 
-using Splitter = rmi::SAHSplitter<TriangularMesh>;
+using Splitter = rmi::MedianSplitter<TriangularMesh>;
 
 
 class SampleGenerator {
@@ -61,7 +60,7 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
         BENCHMARK_ADVANCED(concat("Parallel <", threads_count, "> search ", mesh.size()))(auto meter) {
             auto ray = generator.next_ray();
             meter.measure([&ray, threads_count] {
-                return rmi::parallel::omp_intersects(ray, mesh, threads_count);
+                return ray.omp_intersects(mesh, threads_count);
             });
         };
     }
@@ -70,7 +69,7 @@ TEST_CASE("Mesh intersection", "[benchmark][ray][mesh]") {
 
 
 TEST_CASE("KD-Tree intersection", "[benchmark][ray][kdtree]") {
-    auto tree = rmi::KDTree<TriangularMesh>::for_mesh(mesh.begin(), mesh.end(), Splitter());
+    auto tree = rmi::KDTree<TriangularMesh>::for_mesh(mesh, Splitter());
 
     generator.reset();
     BENCHMARK_ADVANCED(concat("Sync KD-Tree search "))(auto meter) {
@@ -86,7 +85,7 @@ TEST_CASE("KD-Tree intersection", "[benchmark][ray][kdtree]") {
         ))(auto meter) {
             auto ray = generator.next_ray();
             meter.measure([&ray, &tree, threads_count] {
-                return rmi::parallel::omp_intersects(ray, tree, threads_count);
+                return ray.omp_intersects(tree, threads_count);
             });
         };
     }
@@ -100,7 +99,7 @@ TEST_CASE("KD-Tree intersection", "[benchmark][ray][kdtree]") {
         ))(auto meter) {
             auto ray = generator.next_ray();
             meter.measure([&ray, &tree, threads_count] {
-                return rmi::parallel::pool_intersects(ray, tree, threads_count);
+                return ray.pool_intersects(tree, threads_count);
             });
         };
     }
