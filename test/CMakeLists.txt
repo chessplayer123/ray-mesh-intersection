@@ -15,7 +15,6 @@ if (INCLUDE_OMP)
 endif()
 
 if (INCLUDE_POOL)
-    list(APPEND LIBS atomic)
     list(APPEND DEFS RMI_INCLUDE_POOL)
 endif()
 
