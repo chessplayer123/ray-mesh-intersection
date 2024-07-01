@@ -1,10 +1,20 @@
 cmake_minimum_required(VERSION 3.5)
 project(RAY_MESH_INTERSECTION)
 
-set(CXX_MSVC_FLAGS /std:c++17 /O2 /EHsc)
-set(CXX_GNU_FLAGS -Wall -Wextra -pedantic -O2 -std=c++17)
+
 set(header_path "${RAY_MESH_INTERSECTION_SOURCE_DIR}/include/rmilib")
 set(src_path "${RAY_MESH_INTERSECTION_SOURCE_DIR}/src")
+
+
+set(CXX_MSVC_FLAGS /std:c++17 /O2 /EHsc)
+set(CXX_GNU_FLAGS -Wall -Wextra -pedantic -O2 -std=c++17)
+
+if (INCLUDE_OMP)
+    string(APPEND CXX_MSVC_FLAGS ";/openmp:llvm")
+    string(APPEND CXX_GNU_FLAGS ";-fopenmp")
+    find_package(OpenMP REQUIRED)
+endif()
+
 
 if (CMAKE_COMPILER_IS_GNUCXX)
     add_compile_options(${CXX_GNU_FLAGS})
@@ -16,11 +26,6 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     endif()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     add_compile_options(${CXX_MSVC_FLAGS})
-endif()
-
-
-if (INCLUDE_OMP)
-    find_package(OpenMP REQUIRED)
 endif()
 
 
