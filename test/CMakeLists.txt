@@ -9,7 +9,10 @@ file(GLOB TEST_SOURCES *_test.cpp *_benchmark.cpp)
 
 set(LIBS CATCH_STATIC rmilib)
 set(DEFS "")
+
 if (INCLUDE_OMP)
+    set(OpenMP_RUNTIME_MSVC llvm)
+    find_package(OpenMP REQUIRED)
     list(APPEND LIBS OpenMP::OpenMP_CXX)
     list(APPEND DEFS RMI_INCLUDE_OMP)
 endif()
