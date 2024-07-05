@@ -6,16 +6,16 @@ set(header_path "${RAY_MESH_INTERSECTION_SOURCE_DIR}/include/rmilib")
 set(src_path "${RAY_MESH_INTERSECTION_SOURCE_DIR}/src")
 
 
-if (INCLUDE_OMP)
-    find_package(OpenMP REQUIRED)
-endif()
-
-
 add_compile_options(
     "$<$<CXX_COMPILER_ID:GNU>:-Wall;-Wextra;-pedantic;-O2;-std=c++17>"
     "$<$<CXX_COMPILER_ID:Clang>:-Wall;-Wextra;-pedantic;-O2;-std=c++17>"
-    "$<$<CXX_COMPILER_ID:MSVC>:/std:c++17;/O2;/EHsc>"
+    "$<$<CXX_COMPILER_ID:MSVC>:/std:c++17;/O2;/EHsc;$<$<BOOL:${INCLUDE_OMP}>:/openmp:llvm>>"
 )
+
+
+if (INCLUDE_OMP)
+    find_package(OpenMP REQUIRED)
+endif()
 
 
 include_directories(external/)
