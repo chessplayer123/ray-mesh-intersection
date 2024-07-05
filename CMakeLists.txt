@@ -6,11 +6,6 @@ set(header_path "${RAY_MESH_INTERSECTION_SOURCE_DIR}/include/rmilib")
 set(src_path "${RAY_MESH_INTERSECTION_SOURCE_DIR}/src")
 
 
-set(CXX_MSVC_FLAGS "/std:c++17;/O2;/EHsc")
-set(CXX_GNU_FLAGS "-Wall;-Wextra;-pedantic;-O2;-std=c++17")
-set(CXX_CLANG_FLAGS "-Wall;-Wextra;-pedantic;-O2;-std=c++17")
-
-
 if (INCLUDE_OMP)
     find_package(OpenMP REQUIRED)
 endif()

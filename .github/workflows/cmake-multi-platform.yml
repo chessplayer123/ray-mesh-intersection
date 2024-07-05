@@ -16,11 +16,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         build_type: [Release]
-        c_compiler: [gcc, cl, clang]
+        c_compiler: [gcc, clang-cl, clang]
         include:
           - os: windows-latest
-            c_compiler: cl
-            cpp_compiler: cl
+            c_compiler: clang-cl
+            cpp_compiler: clang-cl
           - os: ubuntu-latest
             c_compiler: gcc
             cpp_compiler: g++
@@ -33,7 +33,7 @@ jobs:
           - os: windows-latest
             c_compiler: clang
           - os: ubuntu-latest
-            c_compiler: cl
+            c_compiler: clang-cl
 
     steps:
     - uses: actions/checkout@v3
