@@ -1,4 +1,3 @@
-const intersectionsData = document.getElementById("app-data");
 const threadsCountSlider = document.getElementById("threads-count");
 
 
@@ -10,79 +9,70 @@ function toFixed(num, digitsCount=2) {
 class IntersectionHandler {
     constructor() {
         this.coords = [];
+        this.info = "";
+
         this.ray = null;
         this.tree = null;
+
         this.points = null;
         this.boxes = null;
+        this.line = null;
 
         this.boxesColor = [0.5, 0.5, 1, 1];
         this.pointsColor = [0.96, 0.3, 0.0, 1];
     }
 
-    extendPoints(points) {
-        if (points.size() == 0) {
-            return;
+    extendPoints(intersections) {
+        const size = intersections.size();
+        if (size > 0) {
+            for (let i = 0; i < size; ++i) {
+                this.coords.push(...intersections.get(i));
+            }
+            this.points = new Drawable({position: this.coords}, this.pointsColor, gl.POINTS);
         }
-
-        let pointsRepr = [];
-        for (let i = 0; i < points.size(); ++i) {
-            const p = points.get(i);
-            this.coords.push(p.x, p.y, p.z);
-            pointsRepr.push(`\n  (${toFixed(p.x)}, ${toFixed(p.y)}, ${toFixed(p.z)})`)
-        }
-        this.points = new Drawable({position: this.coords}, this.pointsColor, gl.POINTS);
-
-        intersectionsData.innerHTML += pointsRepr.join();
     }
 
     findIntersections(ray, tree) {
         this.clear();
 
         let start = performance.now();
-        let intersections = tree.intersects(ray);
+        const intersections = ray.intersectsKDTree(tree.data);
         const seqTimeInfo = `${toFixed(performance.now() - start, 3)} ms`;
 
         let parTimeInfo = "-";
         if (useParallel) {
             start = performance.now();
-            tree.par_intersects(ray, parseInt(threadsCountSlider.value));
+            ray.poolIntersectsTree(tree.data, parseInt(threadsCountSlider.value));
             parTimeInfo = `${toFixed(performance.now() - start, 3)} ms`;
         }
 
-        let data = [
-            `Position  (${toFixed(camera.pos[0])}, ${toFixed(camera.pos[1])}, ${toFixed(camera.pos[2])})`,
-            `Direction (${toFixed(camera.front[0])}, ${toFixed(camera.front[1])}, ${toFixed(camera.front[2])})`,
-            `seq: ${seqTimeInfo}, par: ${parTimeInfo}`,
-        ];
-
-        intersectionsData.innerHTML = data.join("\n");
-        intersectionsData.style.visibility = "visible";
+        this.ray = ray;
+        this.info = `seq: ${seqTimeInfo}, par: ${parTimeInfo}`;
 
         this.extendPoints(intersections);
+        const pair = ray.intersectsAABB(tree.data.root().box);
+        this.line = new Drawable({
+            position: [ray.at(0), ray.at(Math.max(pair.first, pair.second))].flat()
+        }, this.pointsColor, gl.LINES);
     }
 
     startTraversal(ray, tree) {
         this.clear();
-        tree.ascendToRoot();
-
         this.tree = tree;
         this.ray = ray;
 
+        tree.ascendToRoot();
+
         this.boxes = new Drawable({position: this.tree.createWireframe()}, this.boxesColor, gl.LINES);
-
-        let data = [
-            `Position  (${toFixed(camera.pos[0])}, ${toFixed(camera.pos[1])}, ${toFixed(camera.pos[2])})`,
-            `Direction (${toFixed(camera.front[0])}, ${toFixed(camera.front[1])}, ${toFixed(camera.front[2])})`
-        ];
-
-        intersectionsData.innerHTML = data.join("\n");
-        intersectionsData.style.visibility = "visible";
+        const pair = ray.intersectsAABB(tree.data.root().box);
+        this.line = new Drawable({
+            position: [ray.at(0), ray.at(Math.max(pair.first, pair.second))].flat()
+        }, this.pointsColor, gl.LINES);
     }
 
     traverse() {
-        if (this.ray && this.tree) {
-            const intersections = this.tree.descendAlongRay(this.ray);
-            this.extendPoints(intersections);
+        if (this.tree) {
+            this.extendPoints(this.tree.descendAlongRay(this.ray));
 
             const wireframe = this.tree.createWireframe();
             if (wireframe.length == 0) {
@@ -94,11 +84,13 @@ class IntersectionHandler {
     }
 
     clear() {
-        intersectionsData.style.visibility = "hidden";
-
         this.coords = [];
+        this.info = "";
+
         this.ray = null;
         this.tree = null;
+
+        this.line = null;
         this.points = null;
         this.boxes = null;
     }
@@ -106,6 +98,7 @@ class IntersectionHandler {
     draw() {
         if (this.points) this.points.draw();
         if (this.boxes)  this.boxes.draw();
+        if (this.line)   this.line.draw();
     }
 }
 

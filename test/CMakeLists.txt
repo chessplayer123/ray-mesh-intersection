@@ -9,13 +9,18 @@ file(GLOB TEST_SOURCES *_test.cpp *_benchmark.cpp)
 
 set(LIBS CATCH_STATIC rmilib)
 set(DEFS "")
+
 if (INCLUDE_OMP)
-    list(APPEND LIBS OpenMP::OpenMP_CXX)
+    if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -openmp:llvm")
+    else()
+        find_package(OpenMP REQUIRED)
+        list(APPEND LIBS OpenMP::OpenMP_CXX)
+    endif()
     list(APPEND DEFS RMI_INCLUDE_OMP)
 endif()
 
 if (INCLUDE_POOL)
-    list(APPEND LIBS atomic)
     list(APPEND DEFS RMI_INCLUDE_POOL)
 endif()
 
